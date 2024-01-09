@@ -61,7 +61,7 @@ class ElectricCarEnv(gym.Env):
 
         # Calculate reward (profit from buying/selling electricity)
         price = self.get_current_price()
-        reward = action * price
+        reward = action * price if action > 0 else action * price / self.efficiency
 
         # Update state
         self.time_of_day += 1
@@ -78,7 +78,7 @@ class ElectricCarEnv(gym.Env):
         # Check if the battery level is below the minimum required at 7 am
         if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
             # Decrease the reward by the cost of charging the battery to the minimum required
-            self.reward -= (self.min_required_battery - self.battery_level) * price
+            self.reward -= (self.min_required_battery - self.battery_level) * price / 0.9
             self.battery_level = self.min_required_battery
 
         # Update the state
