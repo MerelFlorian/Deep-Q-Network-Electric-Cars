@@ -29,7 +29,7 @@ class ElectricCarEnv(gym.Env):
         self.action_space = spaces.Box(low=-self.max_power, high=self.max_power, dtype=np.float32)
 
         # Load electricity price data
-        self.data = pd.read_csv('data/train.csv')
+        self.data = pd.read_csv('data/train_clean.csv')
 
         # Initialize the state
         self.current_step = 0
