@@ -1,0 +1,2 @@
+# Data cleaning
+1. We split the date into three columns: day, month, year. We did this to have numerical time information.
