@@ -103,5 +103,3 @@ class ElectricCarEnv(gym.Env):
         """ Returns the current electricity price.
         """
         return self.data.iloc[self.current_step]["H" + str(self.time_of_day)]
-
-env = ElectricCarEnv()
