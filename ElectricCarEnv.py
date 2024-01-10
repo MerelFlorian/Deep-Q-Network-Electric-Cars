@@ -35,7 +35,7 @@ class ElectricCarEnv(gym.Env):
         self.current_step = 0
         self.time_of_day = 1
 
-    def step(self, action: float) -> Tuple[np.array, float, bool, dict]:
+    def step(self, action: float) -> Tuple[list, float, bool, dict]:
         """ Implements the step function for the environment.
 
         Args:
@@ -64,6 +64,8 @@ class ElectricCarEnv(gym.Env):
             # Calculate reward (profit from buying/selling electricity)
             price = self.get_current_price()
             reward = action * price if action > 0 else action * price / self.efficiency
+        else:
+            reward = 0
 
         # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
         if self.time_of_day == 19 and not self.car_available:
@@ -80,11 +82,11 @@ class ElectricCarEnv(gym.Env):
         self.state = [self.battery_level, self.time_of_day, self.car_available]
 
         # Check if the episode is done
-        done = self.current_step == len(self.price_data)
+        done = self.current_step == len(self.data)
 
-        return np.array(self.state), reward, done, {}
+        return self.state, reward, done, {}
 
-    def reset(self) -> None:
+    def reset(self) -> list:
         """ Resets the environment.
         """
         # Start with a minimum battery level
@@ -93,11 +95,11 @@ class ElectricCarEnv(gym.Env):
         self.time_of_day = 1
         self.current_step = 0
         # Generate a random two-day availability schedule
-        self.car_available = self.two_day_availability()
+        self.car_available = np.random.choice([True, False])
         # Initialize the state
         self.state = [self.battery_level, self.time_of_day, self.car_available]
 
-        return np.array(self.state)
+        return self.state
 
     def get_current_price(self) -> float:
         """ Returns the current electricity price.
