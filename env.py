@@ -34,16 +34,6 @@ class ElectricCarEnv(gym.Env):
         # Initialize the state
         self.current_step = 0
         self.time_of_day = 1
-        
-    def two_day_availability(self) -> None:
-        """ Generates a random two-day availability schedule for the car.
-        """
-        # Generate a random two-day availability schedule
-        availability = np.random.choice([0, 1], size=2, p=[0.5, 0.5])
-        if availability[0] == 1:
-            self.availabilities = [1] * 31 + [0] * 11 + [1] * 6
-        else:
-            self.availabilities = [1] * 7 + [0] * 11 + [1] * 30
 
     def step(self, action: float) -> Tuple[np.array, float, bool, dict]:
         """ Implements the step function for the environment.
@@ -54,31 +44,31 @@ class ElectricCarEnv(gym.Env):
         Returns:
             Tuple[np.array, float, bool, dict]: The next state, the reward, whether the episode is done, and additional information
         """
-        # Update the battery level based on the action and efficiency
-        energy_change = action * self.efficiency
-        self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
-
-        # Calculate reward (profit from buying/selling electricity)
-        price = self.get_current_price()
-        reward = action * price if action > 0 else action * price / self.efficiency
-
         # Update the time
         self.time_of_day += 1
         # Update the current step
         self.current_step += 1
-        # Update car availability
-        self.car_available = self.availabilities.pop(0)
-        # Decrease the battery level by 20 kW if the car is not available
-        if not self.car_available:
-            self.battery_level = max(self.battery_level - 20, self.min_required_battery)
-
         # Check if the day is over
         if self.time_of_day > 24:
             # Reset the time of day to 1AM
             self.time_of_day = 1
-            # Generate a random two-day availability schedule if the current one is empty
-            if len(self.availabilities) == 0: 
-                self.availabilities = self.two_day_availability()
+            # Randomly decide if the car is available for the new day
+            self.car_available = np.random.choice([True, False])
+        
+        # From 8AM to 6PM, unavailable cars can't be charged
+        if not (8 <= self.time_of_day <= 18 and not self.car_available):
+            # Update the battery level based on the action and efficiency
+            energy_change = action * self.efficiency
+            self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
+
+            # Calculate reward (profit from buying/selling electricity)
+            price = self.get_current_price()
+            reward = action * price if action > 0 else action * price / self.efficiency
+
+        # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
+        if self.time_of_day == 19 and not self.car_available:
+            if not self.car_available:
+                self.battery_level = max(self.battery_level - 20, self.min_required_battery)
 
         # Check if the battery level is below the minimum required at 7 am
         if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
@@ -90,7 +80,7 @@ class ElectricCarEnv(gym.Env):
         self.state = [self.battery_level, self.time_of_day, self.car_available]
 
         # Check if the episode is done
-        done = self.current_step >= len(self.price_data)
+        done = self.current_step == len(self.price_data)
 
         return np.array(self.state), reward, done, {}
 
@@ -112,8 +102,6 @@ class ElectricCarEnv(gym.Env):
     def get_current_price(self) -> float:
         """ Returns the current electricity price.
         """
-        #TODO IMPLEMENT
-        # Return the current electricity price
-        return self.data.iloc[self.current_step]['price']
+        return self.data.iloc[self.current_step]["H" + str(self.time_of_day)]
 
 env = ElectricCarEnv()
