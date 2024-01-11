@@ -55,36 +55,44 @@ class ElectricCarEnv(gym.Env):
             # Randomly decide if the car is available for the new day
             self.car_available = np.random.choice([True, False])
         
-        # From 8AM to 6PM, unavailable cars can't be charged
-        if not (8 <= self.time_of_day <= 18 and not self.car_available):
-            # Update the battery level based on the action and efficiency
-            energy_change = action * self.efficiency
-            self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
+        # Check if the episode is done (reached the end of the data)
+        done = self.current_step >= len(self.data)
 
-            # Calculate reward (profit from buying/selling electricity)
-            price = self.get_current_price()
-            reward = action * price if action > 0 else action * price / self.efficiency
+        if done:
+            # Return the final state and zero reward #TODO what should be the final reward?
+            return self.state, 0, done, {}
+
         else:
-            reward = 0
+            # From 8AM to 6PM, unavailable cars can't be charged
+            if not (8 <= self.time_of_day <= 18 and not self.car_available):
+                # Update the battery level based on the action and efficiency
+                energy_change = action * self.efficiency
+                self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
 
-        # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
-        if self.time_of_day == 19 and not self.car_available:
-            if not self.car_available:
-                self.battery_level = max(self.battery_level - 20, self.min_required_battery)
+                # Calculate reward (profit from buying/selling electricity)
+                price = self.get_current_price()
+                reward = action * price if action > 0 else action * price / self.efficiency
+            else:
+                reward = 0
 
-        # Check if the battery level is below the minimum required at 7 am
-        if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
-            # Decrease the reward by the cost of charging the battery to the minimum required
-            self.reward -= (self.min_required_battery - self.battery_level) * price / 0.9
-            self.battery_level = self.min_required_battery
+            # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
+            if self.time_of_day == 19 and not self.car_available:
+                if not self.car_available:
+                    self.battery_level = max(self.battery_level - 20, self.min_required_battery)
 
-        # Update the state
-        self.state = [self.battery_level, self.time_of_day, self.car_available]
+            # Check if the battery level is below the minimum required at 7 am
+            if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
+                # Decrease the reward by the cost of charging the battery to the minimum required
+                self.reward -= (self.min_required_battery - self.battery_level) * price / 0.9
+                self.battery_level = self.min_required_battery
 
-        # Check if the episode is done
-        done = self.current_step == len(self.data)
+            # Update the state
+            self.state = [self.battery_level, self.time_of_day, self.car_available]
 
-        return self.state, reward, done, {}
+            # Check if the episode is done
+            done = self.current_step == len(self.data)
+
+            return self.state, reward, done, {}
 
     def reset(self) -> list:
         """ Resets the environment.
