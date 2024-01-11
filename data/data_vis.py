@@ -178,7 +178,7 @@ if __name__ == "__main__":
     # Convert the DataFrame to long format
     df_long = long_format(df)
     
-    S# Save the DataFrame to a csv file
+    # Save the DataFrame to a csv file
     df_long.to_csv('../data/long_format.csv', index=False)
 
     # Plot the daily average values per year and save to images folder
