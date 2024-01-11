@@ -56,7 +56,7 @@ class ElectricCarEnv(gym.Env):
             self.car_available = np.random.choice([True, False])
         
         # From 8AM to 6PM, unavailable cars can't be charged
-        if self.current_step < (len(self.data) - 1) and not (8 <= self.time_of_day <= 18 and not self.car_available):
+        if not (8 <= self.time_of_day <= 18 and not self.car_available):
             # Update the battery level based on the action and efficiency
             energy_change = action * self.efficiency
             self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
