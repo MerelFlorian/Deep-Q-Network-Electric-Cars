@@ -63,7 +63,7 @@ class ElectricCarEnv(gym.Env):
 
             # Calculate reward (profit from buying/selling electricity)
             price = self.get_current_price()
-            reward = (action * price if action > 0 else action * price / self.efficiency) / 1000
+            reward = (action * price if action > 0 else 2 * action * price / self.efficiency) / 1000
         else:
             reward = 0
 
