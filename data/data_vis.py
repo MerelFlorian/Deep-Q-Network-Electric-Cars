@@ -21,7 +21,7 @@ def clean_data(csv_file: str) -> pd.DataFrame:
     """
 
     # Import data as pandas dataframe
-    df = pd.read_csv('../data/train.csv')
+    df = pd.read_csv(csv_file)
     # Remove all columns after 24th column
     df = df.iloc[:, :25]
     # Remove all rows with NaN values

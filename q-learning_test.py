@@ -4,6 +4,9 @@ from ElectricCarEnv import ElectricCarEnv
 from algorithms import QLearningAgent
 
 def validate_agent(env, agent, num_episodes):
+    """"
+    Function to validate the agent on a validation set.
+    """
     total_rewards = 0
     for episode in range(num_episodes):
         state = env.reset()
@@ -23,11 +26,11 @@ action_bins = np.linspace(-25, 25, 10)  # Discretize actions (buy/sell amounts)
 agent = QLearningAgent(state_bins, action_bins)
 
 # Load validation data into the environment
-env.data = pd.read_csv('data/validate.csv') 
+env.data = pd.read_csv('data/validate_clean.csv') 
 
 # Create a new agent instance or use the existing one
 test_agent = QLearningAgent(state_bins, action_bins) 
- 
+
 # Load the Q-table
 test_agent.q_table = np.load('models/q_table.npy')
 

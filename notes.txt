@@ -1,7 +1,8 @@
 # Data cleaning
-1. We split the date into three columns: day, month, year. We did this to have numerical time information.
+1. We split the date into three columns: day, month, year. We did this to have numerical time information
 
 
-
-opening price (1 am each day)
-and closing price (24 pm each day)
+# Questions for workgroup
+1. What do we return for an invalid action?
+2. What is the final reward (when we are at the end of the data)
+3. How do we measure the performance? average reward?
