@@ -8,6 +8,7 @@ import seaborn as sns
 import io
 import mplfinance as mpf
 import copy 
+
 def clean_data(csv_file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
     Removes empty rows. Dates are converted to datetime format. Columns are renamed to H1, H2, H3.
@@ -108,37 +109,43 @@ def plot_daily_average_values_per_year(df_long: pd.DataFrame)-> None:
     plt.savefig('../images/daily_average_values_per_year.png')
 
 def candlestick_format(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert the DataFrame to candlestick chart format. This is done by melting the DataFrame and adding a timedelta to the dates
+    """Convert the DataFrame to weekly candlestick chart format.
 
     Args:
-        df (pd.DataFrame): DataFrame
+        df (pd.DataFrame): DataFrame with hourly data and a 'date' column.
 
     Returns:
-        pd.DataFrame:  Candlestick chart format DataFrame
+        pd.DataFrame: DataFrame in weekly candlestick chart format.
     """
-    # Calculate Open, High, Low, Close prices for each day
-    df['Open'] = df['H1']
-    df['High'] = df.loc[:, 'H1':'H23'].max(axis=1)
-    df['Low'] = df.loc[:, 'H1':'H23'].min(axis=1)
-    df['Close'] = df['H23']
+    # Ensure 'date' is a datetime and set it as index
     df['date'] = pd.to_datetime(df['date'])
     df.set_index('date', inplace=True)
 
-    # We only need the OHLC data for the candlestick plot
-    return df[['Open', 'High', 'Low', 'Close']]
+    # Calculate 'High' and 'Low' for each day before resampling
+    df['High'] = df.loc[:, 'H1':'H23'].max(axis=1)
+    df['Low'] = df.loc[:, 'H1':'H23'].min(axis=1)
 
-def candlestick(ohlc: pd.DataFrame) -> None:
+    # Resample the data to weekly frequency
+    # 'Open' is the first 'H1' value of the week, 'Close' is the last 'H23' value of the week
+    weekly_df = df.resample('W').agg({'H1': 'first', 
+                                      'H23': 'last', 
+                                      'High': 'max', 
+                                      'Low': 'min'})
+
+    # Rename columns to match OHLC convention
+    weekly_df.rename(columns={'H1': 'Open', 'H23': 'Close'}, inplace=True)
+
+    return weekly_df[['Open', 'High', 'Low', 'Close']]
+
+def candlestick(ohlc: pd.DataFrame, description) -> None:
     """Plot a candlestick chart of prices.
 
     Args:
         df (pd.DataFrame): DataFrame
+        description (str): Short description of the chart
     """
     # Plot candlestick chart
-    mpf.plot(ohlc, type='candle', style='charles', title='Daily Candlestick Chart')
-
-    # Save the plot to a png file
-    plt.savefig('../images/candlestick_chart.png')
-
+    mpf.plot(ohlc, type='candle', style='charles', title=f'Weekly Candlestick Chart {description}', savefig=f'../images/candlestick{description}.png')
 
 if __name__ == "__main__":
     # Clean the data
@@ -154,21 +161,25 @@ if __name__ == "__main__":
     # get deepcopy of df for candlestick chart
     df_candle = copy.deepcopy(df)
 
-    # Convert dataset to candlestick chart format
-    ohlc = candlestick_format(df_candle)
-    print(ohlc)
+    # Make a plot for each year
+    for y in [2007,  2008, 2009]:
 
-    # Make dataframe for candlestick chart and save 
-    candlestick(ohlc)
+        # Get candlestick dataset for each year
+        df_year = df_candle[df_candle['date'].dt.year == y]
+        print(df_year.head())
+
+        # Convert dataset to candlestick chart format
+        ohlc_year = candlestick_format(df_year)
+        print(ohlc_year.head())
+
+        # Make dataframe for candlestick chart and save 
+        candlestick(ohlc_year, str(y))
 
     # Convert the DataFrame to long format
     df_long = long_format(df)
-    # Save the DataFrame to a csv file
+    
+    S# Save the DataFrame to a csv file
     df_long.to_csv('../data/long_format.csv', index=False)
 
     # Plot the daily average values per year and save to images folder
     plot_daily_average_values_per_year(df_long)
-        
-
-
-
