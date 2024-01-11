@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
-
+import mplfinance as mpf
+import copy 
 def clean_data(csv_file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
     Removes empty rows. Dates are converted to datetime format. Columns are renamed to H1, H2, H3.
@@ -34,6 +35,7 @@ def clean_data(csv_file: str) -> pd.DataFrame:
     df.rename(columns={'PRICES': 'date'}, inplace=True)
     # Convert date column to datetime
     df['date'] = pd.to_datetime(df['date'], format='mixed')
+    return df
 
 def add_date_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Add year, month, day columns to DataFrame
@@ -105,18 +107,68 @@ def plot_daily_average_values_per_year(df_long: pd.DataFrame)-> None:
     plt.legend()
     plt.savefig('../images/daily_average_values_per_year.png')
 
-if "__name__" == "__main__":
+def candlestick_format(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert the DataFrame to candlestick chart format. This is done by melting the DataFrame and adding a timedelta to the dates
+
+    Args:
+        df (pd.DataFrame): DataFrame
+
+    Returns:
+        pd.DataFrame:  Candlestick chart format DataFrame
+    """
+    # Calculate Open, High, Low, Close prices for each day
+    df['Open'] = df['H1']
+    df['High'] = df.loc[:, 'H1':'H23'].max(axis=1)
+    df['Low'] = df.loc[:, 'H1':'H23'].min(axis=1)
+    df['Close'] = df['H23']
+    df['date'] = pd.to_datetime(df['date'])
+    df.set_index('date', inplace=True)
+
+    # We only need the OHLC data for the candlestick plot
+    return df[['Open', 'High', 'Low', 'Close']]
+
+def candlestick(ohlc: pd.DataFrame) -> None:
+    """Plot a candlestick chart of prices.
+
+    Args:
+        df (pd.DataFrame): DataFrame
+    """
+    # Plot candlestick chart
+    mpf.plot(ohlc, type='candle', style='charles', title='Daily Candlestick Chart')
+
+    # Save the plot to a png file
+    plt.savefig('../images/candlestick_chart.png')
+
+
+if __name__ == "__main__":
     # Clean the data
     df = clean_data('../data/train.csv')
     # Add date columns
     df = add_date_columns(df)
     # Save the DataFrame to a csv file
     df.to_csv('../data/train_clean.csv', index=False)
+
+    # Clean the data
+    df = clean_data('../data/train.csv')
+
+    # get deepcopy of df for candlestick chart
+    df_candle = copy.deepcopy(df)
+
+    # Convert dataset to candlestick chart format
+    ohlc = candlestick_format(df_candle)
+    print(ohlc)
+
+    # Make dataframe for candlestick chart and save 
+    candlestick(ohlc)
+
     # Convert the DataFrame to long format
     df_long = long_format(df)
     # Save the DataFrame to a csv file
     df_long.to_csv('../data/long_format.csv', index=False)
+
     # Plot the daily average values per year and save to images folder
     plot_daily_average_values_per_year(df_long)
+        
+
 
 
