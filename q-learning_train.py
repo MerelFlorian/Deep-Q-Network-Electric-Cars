@@ -27,6 +27,7 @@ for episode in range(num_episodes):
         state = next_state
         total_reward += reward
 
+    # Keep track of the total reward for this episode
     total_rewards.append(total_reward)
     print(f"Episode: {episode}, Total Reward: {total_reward}")
 

@@ -4,6 +4,9 @@ from ElectricCarEnv import ElectricCarEnv
 from algorithms import QLearningAgent
 
 def validate_agent(env, agent, num_episodes):
+    """"
+    Function to validate the agent on a validation set.
+    """
     total_rewards = 0
     for episode in range(num_episodes):
         state = env.reset()
