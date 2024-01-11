@@ -82,7 +82,7 @@ class ElectricCarEnv(gym.Env):
         self.state = [self.battery_level, self.time_of_day, self.car_available]
 
         # Check if the episode is done
-        done = self.current_step == len(self.data)
+        done = self.current_step == len(self.data) - 1
 
         return self.state, reward, done, {}
 
