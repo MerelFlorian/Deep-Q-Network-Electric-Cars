@@ -9,7 +9,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.01, discount_factor=1, epsilon=1.0, epsilon_decay=0.995, min_epsilon=0.01, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.01, discount_factor=0.99, epsilon=1, epsilon_decay=0.995, min_epsilon=0, max_battery=50):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
