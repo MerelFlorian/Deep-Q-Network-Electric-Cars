@@ -22,7 +22,7 @@ def validate_agent(env, agent, num_episodes):
 # Environment and Agent Initialization
 env = ElectricCarEnv()
 state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
-action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)
+action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)]
 
 # Load validation data into the environment
 env.data = pd.read_csv('data/validate_clean.csv') 

@@ -76,20 +76,17 @@ class QLearningAgent:
 class EMA:
   """Implements an exponential moving average cross strategy
   """
-  def __init__(self, len_short: int, len_long: int, alpha_short: float, alpha_long: float, max_battery: int) -> None:
+  def __init__(self, len_short: int, len_long: int, max_battery: int) -> None:
       """ Initialises the EMA strategy.
 
       Args:
           len_short (int): The length of the short EMA (in hours).
           len_long (int): The length of the long EMA (in hours).
-          alpha_short (float): The alpha value for the short EMA.
-          alpha_long (float): The alpha value for the long EMA.
+          max_battery (int): The maximum battery capacity of the electric car.
       """
       # Constants
       self.len_short = len_short
       self.len_long = len_long
-      self.alpha_short = alpha_short
-      self.alpha_long = alpha_long
       self.max_battery = max_battery
 
       self.short_ema = None
@@ -98,24 +95,31 @@ class EMA:
       self.long_ema_history = np.array([])
       self.action = None
   
-  def calculate_ema(self, price: float, window: int, history: Type[np.ndarray], alpha: float) -> Tuple[float, Type[np.ndarray]]:
+  def calculate_ema(self, price: float, window: int, history: Type[np.ndarray]) -> Tuple[float, Type[np.ndarray]]:
       """ Calculates an EMA given a price value, the window span, the previous ema value, and a smoothing factor.
 
       Args:
           price (float): The price of the asset for the current time step.
           window (int): The window span of the EMA.
           history (Type[np.ndarray]): The history of the EMA.
-          alpha (float): The smoothing factor.
 
       Returns:
           Tuple[float, Type[np.ndarray]]]: The EMA value and the updated history.
       """
       if len(history) < 1:
-          return price, np.append(history, price)
+          return price
       else:
-          new = price * (alpha / (window + 1)) + history[-1] * (1 - (alpha / (window + 1)))
-          return new, np.append(history, new)
+          new = price * (2 / (window + 1)) + history[-1] * (1 - (2 / (window + 1)))
+          return new
   
+  def percent_difference(self) -> float:
+      """ Calculates the percent difference between the short and long EMAs.
+
+      Returns:
+          float: The percent difference between the short and long EMAs.
+      """
+      return abs((self.short_ema - self.long_ema)) / self.long_ema
+
   def choose_action(self, price: float, state: list) -> float:
       """ Chooses an action for the current time step.
 
@@ -126,26 +130,26 @@ class EMA:
           float: The action to take in terms of kW to buy or sell.
       """
       # Update the EMAs
-      self.short_ema, self.short_ema_history = self.calculate_ema(price, self.len_short, self.short_ema_history, self.alpha_short)
-      self.long_ema, self.long_ema_history = self.calculate_ema(price, self.len_long, self.long_ema_history, self.alpha_long)
+      self.short_ema = self.calculate_ema(price, self.len_short, self.short_ema_history)
+      self.long_ema = self.calculate_ema(price, self.len_long, self.long_ema_history)
 
       # Append the EMAs to the history
       self.short_ema_history = np.append(self.short_ema_history, self.short_ema)
       self.long_ema_history = np.append(self.long_ema_history, self.long_ema)
       
       # Choose the action
-      if not len(self.long_ema_history) < self.len_long:
-          if state[1] < 8 or state[1] > 18:
-              self.action = self.max_battery - state[0]
-
-          if self.short_ema < self.long_ema:
-              self.action *= -1
-          elif self.short_ema == self.long_ema:
-              self.action = 0
+      if state[1] < 8 and self.percent_difference:
+          self.action = (self.max_battery - state[0]) / 2
+          if not state[2]:
+              self.action *= 2
       else:
-          self.action = 5
+          self.action = 0
+      
+      if self.short_ema > self.long_ema and self.percent_difference() > 0.01:
+          self.action *= 1
+      elif self.short_ema < self.long_ema and self.percent_difference() > 0.01:
+          self.action *= -1
+      elif self.short_ema == self.long_ema:
+          self.action = 0
           
       return self.action
-  
-  def update(self, price):
-      pass
