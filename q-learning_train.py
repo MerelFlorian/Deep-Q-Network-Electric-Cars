@@ -3,6 +3,7 @@ from ElectricCarEnv import ElectricCarEnv
 from algorithms import QLearningAgent
 import matplotlib.pyplot as plt
 import pandas as pd
+from data.data_vis import plot_battery_levels
 
 def validate_agent(env, agent, qtable):
     """"
@@ -31,21 +32,24 @@ test_env.data = pd.read_csv('data/validate_clean.csv')
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop
-num_episodes = 1000
+num_episodes = 10
 total_rewards = []
 total_validation_rewards = []
 highest_reward = -np.inf
+best_battery_levels = 0
 
 for episode in range(num_episodes):
     state = env.reset()
     done = False
     total_reward = 0
+    battery_levels = []
 
     while not done:
         action = agent.choose_action(state)
         next_state, reward, done, _ = env.step(action)
         if not done:
             agent.update(state, action, reward, next_state)
+            battery_levels.append(env.battery_level)
         state = next_state
         total_reward += reward
 
@@ -62,11 +66,14 @@ for episode in range(num_episodes):
         highest_reward = validation_reward
         best_episode = episode
         best_q_table = agent.q_table.copy()
+        best_battery_levels = battery_levels.copy()
 
 # Save the best Q-table
 np.save('models/best_q_table.npy', best_q_table)
 print(f"Best Q-table saved from episode {episode} with total reward: {highest_reward}")
 
+# Plot battery levels of the best model using the function
+plot_battery_levels(best_battery_levels, title='Battery Levels of Q-Learning Agent', save_path='images/battery_levels_q_learning.png')
 
 # Plot the learning progress
 plt.plot(total_rewards)
