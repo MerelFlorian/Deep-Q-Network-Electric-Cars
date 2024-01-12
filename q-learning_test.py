@@ -16,7 +16,7 @@ def validate_agent(env, agent, num_episodes):
         state, reward, done, _ = env.step(action)
         total_rewards += reward
 
-    return total_rewards
+    return total_rewards / num_episodes
 
 # Environment and Agent Initialization
 env = ElectricCarEnv()
