@@ -82,7 +82,7 @@ class ElectricCarEnv(gym.Env):
         self.state = [self.battery_level, self.time_of_day, self.car_available]
 
         # Check if the episode is done
-        done = self.current_step < len(self.data)
+        done = self.current_step == len(self.data) - 1
 
         return self.state, reward, done, {}
 
@@ -94,7 +94,9 @@ class ElectricCarEnv(gym.Env):
         # Reset the time of day and current step
         self.time_of_day = 1
         self.current_step = 0
-        # Generate a random two-day availability schedule
+        # Reset the reward
+        self.reward = 0
+        # Generate a random car availability
         self.car_available = np.random.choice([True, False])
         # Initialize the state
         self.state = [self.battery_level, self.time_of_day, self.car_available]
@@ -104,4 +106,5 @@ class ElectricCarEnv(gym.Env):
     def get_current_price(self) -> float:
         """ Returns the current electricity price.
         """
+        print(self.data.iloc[self.current_step]["H" + str(self.time_of_day)])
         return self.data.iloc[self.current_step]["H" + str(self.time_of_day)]
