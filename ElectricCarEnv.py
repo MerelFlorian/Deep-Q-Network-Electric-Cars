@@ -58,24 +58,28 @@ class ElectricCarEnv(gym.Env):
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
             # Update the battery level based on the action and efficiency
-            energy_change = min(action, 25) * self.efficiency
+            energy_change = -action * self.efficiency
             self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
 
             # Calculate reward (profit from buying/selling electricity)
             price = self.get_current_price()
-            reward = (min(action, 25) * price if action > 0 else -action * price / self.efficiency) / 1000
+            # - means buying, + means selling
+            reward = (min(action, 25) * price if action > 0 else 2 * action * price) / 1000
+            if reward > 0:
+                print("sold", reward)
+            else:
+                print("bought", reward)
         else:
             reward = 0
 
         # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
         if self.time_of_day == 19 and not self.car_available:
-            if not self.car_available:
-                self.battery_level = max(self.battery_level - 20, self.min_required_battery)
+            self.battery_level = max(self.battery_level - 20, self.min_required_battery)
 
         # Check if the battery level is below the minimum required at 7 am
         if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
             # Decrease the reward by the cost of charging the battery to the minimum required
-            reward -= (self.min_required_battery - self.battery_level) * price / self.efficiency / 1000
+            reward -= 1.1 * (self.min_required_battery - self.battery_level) * 2 * price / 1000 
             self.battery_level = self.min_required_battery
 
         # Update the state
@@ -83,7 +87,6 @@ class ElectricCarEnv(gym.Env):
 
         # Check if the episode is done
         done = self.current_step == len(self.data) - 1
-
         return self.state, reward, done, {}
 
     def reset(self) -> list:

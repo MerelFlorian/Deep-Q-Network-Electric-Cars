@@ -89,6 +89,8 @@ class EMA:
       self.len_long = len_long
       self.max_battery = max_battery
 
+      self.sl_cross = 0
+      self.ls_cross = 0
       self.short_ema = None
       self.long_ema = None
       self.short_ema_history = np.array([])
@@ -138,18 +140,21 @@ class EMA:
       self.long_ema_history = np.append(self.long_ema_history, self.long_ema)
       
       # Choose the action
-      if state[1] < 8 and self.percent_difference:
-          self.action = (self.max_battery - state[0]) / 2
-          if not state[2]:
-              self.action *= 2
-      else:
-          self.action = 0
       
-      if self.short_ema > self.long_ema and self.percent_difference() > 0.01:
-          self.action *= 1
-      elif self.short_ema < self.long_ema and self.percent_difference() > 0.01:
-          self.action *= -1
-      elif self.short_ema == self.long_ema:
+      if self.long_ema == price:
+          self.action = self.max_battery - state[0]
+
+      if self.short_ema < self.long_ema:
+          self.ls_cross = 0
+          self.sl_cross += 1
+          if self.sl_cross > 1:
+            self.action = -(self.max_battery - state[0])
+      elif self.short_ema > self.long_ema and self.percent_difference() > 0.05:
+          self.sl_cross = 0
+          self.ls_cross += 1
+          if self.ls_cross:
+              self.action = state[0]
+      else:
           self.action = 0
           
       return self.action

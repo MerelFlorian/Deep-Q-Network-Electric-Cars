@@ -26,7 +26,7 @@ agent = EMA(3, 12, env_test.max_battery)
 env_test.data = pd.read_csv('data/validate_clean.csv') 
 
 # Test the agent
-num_test_episodes = 20 # Define the number of episodes for testing
+num_test_episodes = 50 # Define the number of episodes for testing
 
 test_performance, _ = validate_agent(env_test, agent, num_test_episodes)
 
