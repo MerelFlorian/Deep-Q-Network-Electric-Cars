@@ -13,7 +13,6 @@ def validate_agent(env, agent, num_episodes):
         while not done:
             action = agent.choose_action(env.get_current_price(), state)
             state, reward, done, _ = env.step(action)
-            #print(reward)
             total_rewards += reward
     
     average_reward = total_rewards / num_episodes

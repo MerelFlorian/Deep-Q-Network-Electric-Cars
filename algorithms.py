@@ -143,7 +143,7 @@ class EMA:
           elif self.short_ema == self.long_ema:
               self.action = 0
       else:
-          self.action = 0
+          self.action = 5
           
       return self.action
   

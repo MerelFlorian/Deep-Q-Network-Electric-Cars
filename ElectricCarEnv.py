@@ -106,5 +106,4 @@ class ElectricCarEnv(gym.Env):
     def get_current_price(self) -> float:
         """ Returns the current electricity price.
         """
-        print(self.data.iloc[self.current_step]["H" + str(self.time_of_day)])
         return self.data.iloc[self.current_step]["H" + str(self.time_of_day)]
