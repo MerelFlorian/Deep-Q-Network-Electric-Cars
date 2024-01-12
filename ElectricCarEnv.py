@@ -58,12 +58,12 @@ class ElectricCarEnv(gym.Env):
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
             # Update the battery level based on the action and efficiency
-            energy_change = action * self.efficiency
+            energy_change = min(action, 25) * self.efficiency
             self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
 
             # Calculate reward (profit from buying/selling electricity)
             price = self.get_current_price()
-            reward = (action * price if action > 0 else 2 * action * price / self.efficiency) / 1000
+            reward = (min(action, 25) * price if action > 0 else -action * price / self.efficiency) / 1000
         else:
             reward = 0
 
@@ -75,14 +75,14 @@ class ElectricCarEnv(gym.Env):
         # Check if the battery level is below the minimum required at 7 am
         if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
             # Decrease the reward by the cost of charging the battery to the minimum required
-            self.reward -= (self.min_required_battery - self.battery_level) * price / 0.9
+            reward -= (self.min_required_battery - self.battery_level) * price / self.efficiency / 1000
             self.battery_level = self.min_required_battery
 
         # Update the state
         self.state = [self.battery_level, self.time_of_day, self.car_available]
 
         # Check if the episode is done
-        done = self.current_step < len(self.data)
+        done = self.current_step == len(self.data) - 1
 
         return self.state, reward, done, {}
 
@@ -94,7 +94,7 @@ class ElectricCarEnv(gym.Env):
         # Reset the time of day and current step
         self.time_of_day = 1
         self.current_step = 0
-        # Generate a random two-day availability schedule
+        # Generate a random car availability
         self.car_available = np.random.choice([True, False])
         # Initialize the state
         self.state = [self.battery_level, self.time_of_day, self.car_available]
