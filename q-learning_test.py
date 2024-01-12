@@ -8,16 +8,15 @@ def validate_agent(env, agent, num_episodes):
     Function to validate the agent on a validation set.
     """
     total_rewards = 0
-    for episode in range(num_episodes):
-        state = env.reset()
-        done = False
-        while not done:
-            action = agent.choose_action(state)  # Choose action based on policy
-            state, reward, done, _ = env.step(action)
-            total_rewards += reward
     
-    average_reward = total_rewards / num_episodes
-    return average_reward
+    state = env.reset()
+    done = False
+    while not done:
+        action = agent.choose_action(state)  # Choose action based on policy
+        state, reward, done, _ = env.step(action)
+        total_rewards += reward
+
+    return total_rewards
 
 # Environment and Agent Initialization
 env = ElectricCarEnv()
