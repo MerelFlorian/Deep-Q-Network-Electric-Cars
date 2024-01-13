@@ -142,21 +142,23 @@ class EMA:
       
       # Choose the action
       # If the long EMA has not been calculated yet buy the max amount possible
-      if self.long_ema == price:
-          self.action = -(self.max_battery - state[0])
-
+      if len(self.long_ema_history) < self.len_long and 3 <= state[1] <= 5:
+          self.action = -(self.max_battery - state[0]) / 3
+          self.amount = 3
       # If the short EMA is below the long EMA, buy
-      if self.short_ema < self.long_ema:
+      elif self.short_ema < self.long_ema and 1 <= state[1] <= 7:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 5:
-            self.action = -(self.max_battery - state[0])
+          if self.sl_cross > 3:
+            if self.sl_cross == 3:
+                self.amount = 7 - state[1]
+            self.action = -(self.max_battery - state[0]) / self.amount
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 4:
-              self.action = state[0]
+          if self.ls_cross > 3:
+              self.action = state[0] / self.amount
       # Otherwise, do nothing
       else:
           self.action = 0
@@ -178,7 +180,6 @@ class BuyLowSellHigh:
       # Parameters
       self.new_day = False
       self.action = None
-      self.price_history = np.array([])
   
   def choose_action(self, price: float, state: list, ) -> float:
       """ Chooses an action for the current time step.
@@ -192,9 +193,6 @@ class BuyLowSellHigh:
       # Reset the day boolean if it is a new day
       if state[1] == 1:
           self.new_day = True
-      # Reset the price history if it is the end of the day
-      elif state[1] == 24:
-          self.price_history = np.array([])
       self.action = 0   
 
       # Choose the action 
@@ -209,8 +207,6 @@ class BuyLowSellHigh:
           # Otherwise, buy the same amount as in the previous time step
           else:
               self.action += self.amount
-          # Keep track of the price history
-          self.price_history = np.append(self.price_history, 2 * price)
       elif 17 <= state[1] <= 20:
           self.action = state[0] / (3 if state[2] else 1)
           
