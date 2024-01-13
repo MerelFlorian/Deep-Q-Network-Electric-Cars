@@ -1,6 +1,5 @@
 import numpy as np
 import random
-from ElectricCarEnv import ElectricCarEnv
 from typing import Type, Tuple
 
 class QLearningAgent:
@@ -88,7 +87,8 @@ class EMA:
       self.len_short = len_short
       self.len_long = len_long
       self.max_battery = max_battery
-
+      
+      # Parameters
       self.sl_cross = 0
       self.ls_cross = 0
       self.short_ema = None
@@ -108,6 +108,7 @@ class EMA:
       Returns:
           Tuple[float, Type[np.ndarray]]]: The EMA value and the updated history.
       """
+      # If the history is empty, return the price
       if len(history) < 1:
           return price
       else:
@@ -140,21 +141,77 @@ class EMA:
       self.long_ema_history = np.append(self.long_ema_history, self.long_ema)
       
       # Choose the action
-      
+      # If the long EMA has not been calculated yet buy the max amount possible
       if self.long_ema == price:
-          self.action = self.max_battery - state[0]
+          self.action = -(self.max_battery - state[0])
 
+      # If the short EMA is below the long EMA, buy
       if self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 1:
+          if self.sl_cross > 5:
             self.action = -(self.max_battery - state[0])
-      elif self.short_ema > self.long_ema and self.percent_difference() > 0.05:
+      # If the short EMA is above the long EMA, sell
+      elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross:
+          if self.ls_cross > 4:
               self.action = state[0]
+      # Otherwise, do nothing
       else:
           self.action = 0
+          
+      return self.action
+
+class BuyLowSellHigh:
+  """Implements a buy low sell high strategy
+  """
+  def __init__(self, max_battery: int) -> None:
+      """ Initialises the buy low sell high strategy.
+
+      Args:
+          max_battery (int): The maximum battery capacity of the electric car.
+      """
+      # Constants
+      self.max_battery = max_battery
+
+      # Parameters
+      self.new_day = False
+      self.action = None
+      self.price_history = np.array([])
+  
+  def choose_action(self, price: float, state: list, ) -> float:
+      """ Chooses an action for the current time step.
+
+      Args:
+          price (float): The price of the asset for the current time step.
+
+      Returns:
+          float: The action to take in terms of kW to buy or sell.
+      """
+      # Reset the day boolean if it is a new day
+      if state[1] == 1:
+          self.new_day = True
+      # Reset the price history if it is the end of the day
+      elif state[1] == 24:
+          self.price_history = np.array([])
+      self.action = 0   
+
+      # Choose the action 
+
+      # Buy in the morning
+      if 3 <= state[1] <= 5:
+          # If it is a new day, buy one seventh of the max battery
+          if self.new_day:
+              self.action -= (self.max_battery - state[0]) / 3
+              self.amount = self.action
+              self.new_day = False
+          # Otherwise, buy the same amount as in the previous time step
+          else:
+              self.action += self.amount
+          # Keep track of the price history
+          self.price_history = np.append(self.price_history, 2 * price)
+      elif 17 <= state[1] <= 20:
+          self.action = state[0] / (3 if state[2] else 1)
           
       return self.action

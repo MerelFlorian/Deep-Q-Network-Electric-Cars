@@ -238,19 +238,19 @@ if __name__ == "__main__":
     # get deepcopy of df for candlestick chart
     df_candle = copy.deepcopy(df)
 
-    # # Make a plot for each year
-    # for y in [2007,  2008, 2009]:
+    # Make a plot for each year
+    for y in [2007,  2008, 2009]:
 
-    #     # Get candlestick dataset for each year
-    #     df_year = df_candle[df_candle['date'].dt.year == y]
-    #     print(df_year.head())
+        # Get candlestick dataset for each year
+        df_year = df_candle[df_candle['date'].dt.year == y]
+        print(df_year.head())
 
-    #     # Convert dataset to candlestick chart format
-    #     ohlc_year = candlestick_format(df_year)
-    #     print(ohlc_year.head())
+        # Convert dataset to candlestick chart format
+        ohlc_year = candlestick_format(df_year)
+        print(ohlc_year.head())
 
-    #     # Make dataframe for candlestick chart and save 
-    #     candlestick(ohlc_year, str(y))
+        # Make dataframe for candlestick chart and save 
+        candlestick(ohlc_year, str(y))
 
     # Select the first week of 2007
     start_date = '2007-02-01'
@@ -263,11 +263,11 @@ if __name__ == "__main__":
     # Make dataframe for hourly candlestick chart and save 
     candlestick_hourly(ohlc_hourly, 'first_week_2007', [3, 12])  # Adding 12-hour and 26-hour EMAs
 
-    # # Convert the DataFrame to long format
-    # df_long = long_format(df)
+    # Convert the DataFrame to long format
+    df_long = long_format(df)
     
-    # # Save the DataFrame to a csv file
-    # df_long.to_csv('data/long_format.csv', index=False)
+    # Save the DataFrame to a csv file
+    df_long.to_csv('data/long_format.csv', index=False)
 
-    # # Plot the daily average values per year and save to images folder
-    # plot_daily_average_values_per_year(df_long)
+    # Plot the daily average values per year and save to images folder
+    plot_daily_average_values_per_year(df_long)
