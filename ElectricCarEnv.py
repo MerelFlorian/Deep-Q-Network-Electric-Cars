@@ -65,10 +65,6 @@ class ElectricCarEnv(gym.Env):
             price = self.get_current_price()
             # - means buying, + means selling
             reward = (min(action, 25) * price if action > 0 else 2 * action * price) / 1000
-            if reward > 0:
-                print("sold", reward)
-            else:
-                print("bought", reward)
         else:
             reward = 0
 
