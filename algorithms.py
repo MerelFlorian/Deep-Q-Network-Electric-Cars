@@ -142,22 +142,22 @@ class EMA:
       
       # Choose the action
       # If the long EMA has not been calculated yet buy the max amount possible
-      if len(self.long_ema_history) < self.len_long and 3 <= state[1] <= 5:
-          self.action = -(self.max_battery - state[0]) / 3
-          self.amount = 3
+      if len(self.long_ema_history) < self.len_long and 2 <= state[1] <= 5:
+          self.action = -(self.max_battery - state[0]) / 4
+          self.amount = 4
       # If the short EMA is below the long EMA, buy
       elif self.short_ema < self.long_ema and 1 <= state[1] <= 7:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 3:
-            if self.sl_cross == 3:
+          if self.sl_cross > 2:
+            if self.sl_cross == 2:
                 self.amount = 7 - state[1]
             self.action = -(self.max_battery - state[0]) / self.amount
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 3:
+          if self.ls_cross > 1:
               self.action = state[0] / self.amount
       # Otherwise, do nothing
       else:
