@@ -98,4 +98,4 @@ plt.title('Training and Validation Rewards')
 plt.show()
 
 # Save the plot if needed
-fig.savefig('training_validation_rewards.png')
+fig.savefig('images/training_validation_rewards.png')
