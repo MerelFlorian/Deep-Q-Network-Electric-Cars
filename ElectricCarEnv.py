@@ -29,11 +29,11 @@ class ElectricCarEnv(gym.Env):
         self.action_space = spaces.Box(low=-self.max_power, high=self.max_power, dtype=np.float32)
 
         # Load electricity price data
-        self.data = pd.read_csv('data/train1_clean.csv')
+        self.data = pd.read_csv('data/train_clean.csv')
 
         # Initialize the state
         self.current_step = 0
-        self.time_of_day = 0
+        self.time_of_day = 1
 
     def step(self, action: float) -> Tuple[list, float, bool, dict]:
         """ Implements the step function for the environment.
@@ -47,11 +47,11 @@ class ElectricCarEnv(gym.Env):
         # Update the time
         self.time_of_day += 1
         # Check if the day is over
-        if self.time_of_day > 23:
+        if self.time_of_day > 24:
             # Update the current step
             self.current_step += 1
-            # Reset the time of day to 0AM
-            self.time_of_day = 0
+            # Reset the time of day to 1AM
+            self.time_of_day = 1
             # Randomly decide if the car is available for the new day
             self.car_available = np.random.choice([True, False])
         
@@ -94,7 +94,7 @@ class ElectricCarEnv(gym.Env):
         # Start with a minimum battery level
         self.battery_level = self.min_required_battery
         # Reset the time of day and current step
-        self.time_of_day = 0
+        self.time_of_day = 1
         self.current_step = 0
         # Generate a random car availability
         self.car_available = np.random.choice([True, False])

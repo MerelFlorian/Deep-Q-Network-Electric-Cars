@@ -117,7 +117,7 @@ env = ElectricCarEnv()
 # Initialize the agent
 test_agent, rl = process_command(env)
 # Load validation data into the environment
-env.data = pd.read_csv('data/validate1_clean.csv') 
+env.data = pd.read_csv('data/validate_clean.csv') 
 
 # Test the agent
 test_performance, log_env = validate_agent(env, test_agent, rl)

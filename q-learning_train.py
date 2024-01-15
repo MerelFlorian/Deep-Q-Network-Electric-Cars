@@ -28,7 +28,7 @@ agent = QLearningAgent(state_bins, action_bins)
 
 # Load validation data into the environment
 test_env = ElectricCarEnv()
-test_env.data = pd.read_csv('data/validate1_clean.csv') 
+test_env.data = pd.read_csv('data/validate_clean.csv') 
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop

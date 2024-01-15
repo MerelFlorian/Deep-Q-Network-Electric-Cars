@@ -191,8 +191,6 @@ def hourly_candlestick_format(df: pd.DataFrame) -> pd.DataFrame:
     
     return hourly_df[['Open', 'High', 'Low', 'Close']]
 
-
-
 def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int]) -> None:
     """Plot an hourly candlestick chart of prices with EMAs.
 
