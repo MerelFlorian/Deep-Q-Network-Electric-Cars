@@ -18,7 +18,7 @@ def validate_agent(test_env, test_agent, qtable):
         state, reward, done, _ = test_env.step(action)
         total_rewards += reward
 
-    return total_reward
+    return total_rewards
 
 # Environment and Agent Initialization
 env = ElectricCarEnv()
@@ -32,7 +32,7 @@ test_env.data = pd.read_csv('data/validate_clean.csv')
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop
-num_episodes = 10
+num_episodes = 1000
 total_rewards = []
 total_validation_rewards = []
 highest_reward = -np.inf
