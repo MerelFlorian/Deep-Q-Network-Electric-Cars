@@ -1,13 +1,11 @@
-# Data visualizations
+# Data cleaning and visualizations
 
 # imports
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-import io
 import mplfinance as mpf
 import copy 
+from sklearn.ensemble import IsolationForest
 
 def clean_data(csv_file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
@@ -147,39 +145,94 @@ def candlestick(ohlc: pd.DataFrame, description) -> None:
     # Plot candlestick chart
     mpf.plot(ohlc, type='candle', style='charles', title=f'Weekly Candlestick Chart {description}', savefig=f'../images/candlestick{description}.png')
 
-if __name__ == "__main__":
+def outlier_detection(df: pd.DataFrame)->pd.DataFrame:
+    """Detects outliers from the DataFrame using Isolation Forest. Outliers are specified for a whole day.
+    Adds the outliers to the DataFrame as a column. Prints anomaly scores statistics and outlier count.
+    https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html
+
+    Args:
+        df (pd.DataFrame): DataFrame
+
+    Returns:
+        pd.DataFrame: DataFrame without outliers
+    """
     # Clean the data
     df = clean_data('../data/train.csv')
-    # Add date columns
-    df = add_date_columns(df)
-    # Save the DataFrame to a csv file
-    df.to_csv('../data/train_clean.csv', index=False)
-
-    # Clean the data
-    df = clean_data('../data/train.csv')
-
-    # get deepcopy of df for candlestick chart
-    df_candle = copy.deepcopy(df)
-
-    # Make a plot for each year
-    for y in [2007,  2008, 2009]:
-
-        # Get candlestick dataset for each year
-        df_year = df_candle[df_candle['date'].dt.year == y]
-        print(df_year.head())
-
-        # Convert dataset to candlestick chart format
-        ohlc_year = candlestick_format(df_year)
-        print(ohlc_year.head())
-
-        # Make dataframe for candlestick chart and save 
-        candlestick(ohlc_year, str(y))
-
-    # Convert the DataFrame to long format
-    df_long = long_format(df)
     
-    # Save the DataFrame to a csv file
-    df_long.to_csv('../data/long_format.csv', index=False)
+    # Assuming df is your DataFrame
+    df['date'] = pd.to_datetime(df['date'])
+    df.set_index('date', inplace=True)
 
-    # Plot the daily average values per year and save to images folder
-    plot_daily_average_values_per_year(df_long)
+    # Selecting only the hourly data columns for outlier detection
+    data_for_isolation_forest = df.loc[:, 'H1':'H24']
+
+    # Initialize IsolationForest
+    iso_forest = IsolationForest(n_estimators=100, contamination='auto', random_state=42)
+
+    # Fit the model
+    iso_forest.fit(data_for_isolation_forest)
+
+    # Predictions
+    outliers = iso_forest.predict(data_for_isolation_forest)
+
+    # Add predictions to the original DataFrame
+    df['outlier'] = outliers
+
+    # Print anomaly scores statistics
+    print(f'Anomaly scores: {iso_forest.decision_function(data_for_isolation_forest)}')
+    print(df[["outlier"]].describe())
+
+    # Print outlier count
+    print(f'Outlier count: {df[df["outlier"] == -1]["outlier"].count()}, Normal count: {df[df["outlier"] == 1]["outlier"].count()}')
+
+    return df
+
+def plot_outliers(df: pd.DataFrame)-> None:
+    """Plots the outliers from the DataFrame
+
+    Args:
+        df (pd.DataFrame): DataFrame
+
+    Returns:
+        None: Plot is saved to images folder
+    """
+    # Long format DataFrame with outlier column
+    df_long = df.melt(id_vars=['date', 'outlier'], var_name='Hour', value_name='Value')
+    print(df_long.head())
+
+
+
+   
+if __name__ == "__main__":
+    # # Clean the data
+    # df = clean_data('../data/train.csv')
+    # # Add date columns
+    # df = add_date_columns(df)
+    # # Save the DataFrame to a csv file
+    # df.to_csv('../data/train_clean.csv', index=False)
+
+    # # Clean the data
+    # df = clean_data('../data/train.csv')
+
+    # # get deepcopy of df for candlestick chart
+    # df_candle = copy.deepcopy(df)
+
+    # # Make a plot for each year
+    # for y in [2007,  2008, 2009]:
+    #     # Get candlestick dataset for each year
+    #     df_year = df_candle[df_candle['date'].dt.year == y]
+    #     # Convert dataset to candlestick chart format
+    #     ohlc_year = candlestick_format(df_year)
+    #     # Make dataframe for candlestick chart and save 
+    #     candlestick(ohlc_year, str(y))
+
+    # # Convert the DataFrame to long format
+    # df_long = long_format(df)
+    # # Save the DataFrame to a csv file
+    # df_long.to_csv('../data/long_format.csv', index=False)
+
+    df_outliers = outlier_detection('../data/train.csv')
+    print(df_outliers)
+    plot_outliers(df_outliers)
+
+ 
