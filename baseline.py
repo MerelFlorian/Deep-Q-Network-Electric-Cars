@@ -3,7 +3,7 @@ import pandas as pd
 from ElectricCarEnv import ElectricCarEnv
 from algorithms import QLearningAgent, BuyLowSellHigh, EMA
 from gym import Env
-from typing import Type
+from typing import Type, Tuple
 import sys
 
 # Constants
@@ -73,16 +73,35 @@ def ema(env: Env) -> EMA:
         EMA: The EMA agent.
     """
     # Create and return a new agent instance
-    return EMA(env.max_battery)
+    return EMA(3, 12, env.max_battery)
+
+def process_command(env: Env) -> Tuple[QLearningAgent | BuyLowSellHigh | EMA, bool]:
+    """ Function to process the command line arguments.
+
+    Args:
+        env (Env): The environment to initialize the agent on.
+
+    Returns:
+        Tuple[QLearningAgent | BuyLowSellHigh | EMA, bool]: The agent and whether it is a reinforcement learning agent.
+    """
+    if sys.argv[1] not in ['qlearning', 'blsh', 'ema']:
+        print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema')
+        exit()
+    if sys.argv[1] == 'qlearning':
+        return qlearning(), True
+    elif sys.argv[1] == 'blsh':
+        return buylowsellhigh(env), False
+    else:
+        return ema(env), False
 
 # Initialize the environment
 env = ElectricCarEnv()
 # Initialize the agent
-test_agent = qlearning() if sys.argv[1] == 'qlearning' else buylowsellhigh(env) if sys.argv[1] == 'blsh' else ema(env)
+test_agent, rl = process_command(env)
 # Load validation data into the environment
 env.data = pd.read_csv('data/validate_clean.csv') 
 
 # Test the agent
-test_performance = validate_agent(env, test_agent, NUM_EPISODES)
+test_performance = validate_agent(env, test_agent, NUM_EPISODES, rl)
 
 print(f"Average reward on validation set: {test_performance}")
