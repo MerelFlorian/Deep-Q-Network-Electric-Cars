@@ -85,7 +85,8 @@ class ElectricCarEnv(gym.Env):
 
         # Check if the episode is done
         done = self.current_step == len(self.data) - 1
-        return self.state, reward, done, {}
+
+        return self.state, reward, done, {'step':self.current_step}
 
     def reset(self) -> list:
         """ Resets the environment.
