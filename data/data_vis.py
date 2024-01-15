@@ -266,6 +266,24 @@ def outlier_detection(df: pd.DataFrame)->pd.DataFrame:
 
     return df
 
+def visualize_agent(state, action, reward, current_price)->None:
+    """Visualize the agent's performance while training.
+
+    Args:
+        state (list): _description_
+        action (float): _description_
+        reward (float): _description_
+        current_price (float): _description_
+    """
+    # Unpack the state
+    battery_level, time_of_day, car_available = state
+
+    # Plot new datapoints 
+    
+
+
+
+
 if __name__ == "__main__":
     # Clean the data
     df = clean_data('data/train.csv')
