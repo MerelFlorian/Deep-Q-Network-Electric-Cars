@@ -95,7 +95,6 @@ ax2.tick_params(axis='y', labelcolor=color)
 
 fig.tight_layout()  # To ensure the right y-label is not clipped
 plt.title('Training and Validation Rewards')
-plt.show()
 
 # Save the plot if needed
-fig.savefig('images/training_validation_rewards.png')
+fig.savefig('images/training_validation_rewards.png') 

@@ -39,7 +39,7 @@ class QLearningAgent:
         """
         # Ensure state is within valid range
         if not self.is_valid_state(state):
-            return 0 #TODO decide what to do for invalid action
+            return 0 
          
         if np.random.random() < self.epsilon:
             return random.choice(range(len(self.action_bins)))
