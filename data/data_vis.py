@@ -5,7 +5,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 import copy 
-from sklearn.ensemble import IsolationForest
+import matplotlib.pyplot as plt
+from typing import List
+import matplotlib.dates as mdates
+from collections import defaultdict
+from matplotlib.lines import Line2D
+
 
 def clean_data(csv_file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
@@ -188,7 +193,7 @@ def hourly_candlestick_format(df: pd.DataFrame) -> pd.DataFrame:
 
 
 
-def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: list[int]) -> None:
+def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int]) -> None:
     """Plot an hourly candlestick chart of prices with EMAs.
 
     Args:
@@ -204,9 +209,9 @@ def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: list[int
     ohlc.index = pd.DatetimeIndex(ohlc.index)
 
     # Plot candlestick chart
-    mpf.plot(ohlc, type='candle', style='charles', title=f'Hourly Candlestick Chart {description}', 
+    mpf.plot(ohlc, type='candle', style='charles', title=f'Hourly Candlestick Chart {description}', \
              mav=tuple(ema_spans), savefig=f'images/candlestick_hourly_{description}.png')
-import matplotlib.pyplot as plt
+
 
 def plot_battery_levels(battery_levels, title='Battery Levels', save_path='images/battery_levels.png'):
     """
@@ -224,47 +229,74 @@ def plot_battery_levels(battery_levels, title='Battery Levels', save_path='image
     plt.grid(True)
     plt.savefig(save_path, bbox_inches='tight')
 
-def outlier_detection(df: pd.DataFrame)->pd.DataFrame:
-    """Detects outliers from the DataFrame using Isolation Forest. Outliers are specified for a whole day.
-    Adds the outliers to the DataFrame as a column. Prints anomaly scores statistics and outlier count.
-    https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html
-
-    Args:
-        df (pd.DataFrame): DataFrame
-
-    Returns:
-        pd.DataFrame: DataFrame without outliers
+def action_to_color(action):
     """
-    # Clean the data
-    df = clean_data('../data/train.csv')
-    
-    # Assuming df is your DataFrame
-    df['date'] = pd.to_datetime(df['date'])
-    df.set_index('date', inplace=True)
+    Maps the action value to a color.
+    Positive actions are mapped to shades of blue, negative to red, and zero to white.
+    """
+    if action > 0:
+        return (0, 0, min(1, action), 1)  # Shades of blue
+    elif action < 0:
+        return (min(1, -action), 0, 0, 1)  # Shades of red
+    else:
+        return (0.5, 0.5, 0.5, 1)  # gray for zero
 
-    # Selecting only the hourly data columns for outlier detection
-    data_for_isolation_forest = df.loc[:, 'H1':'H24']
+def visualize_bat(df: pd.DataFrame) -> None:
+    """Visualize the data"""
+    # Plot 2 days
+    df = defaultdict(list, {k: v[:48] for k, v in df.items()})
 
-    # Initialize IsolationForest
-    iso_forest = IsolationForest(n_estimators=100, contamination='auto', random_state=42)
+    # Creating a new figure
+    fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    # Fit the model
-    iso_forest.fit(data_for_isolation_forest)
+    # Plot price line
+    ax1.plot(df['date'], df['price'], label='Price', color='grey', alpha=0.5)
 
-    # Predictions
-    outliers = iso_forest.predict(data_for_isolation_forest)
+    # Create custom legend elements for the updated color scheme
+    legend_elements = [
+    Line2D([0], [0], marker='o', color='w', label='Positive Action (Blue)',
+           markersize=10, markerfacecolor='blue'),
+    Line2D([0], [0], marker='o', color='w', label='Negative Action (Red)',
+           markersize=10, markerfacecolor='red'),
+    Line2D([0], [0], marker='o', color='w', label='Zero Action (Gray)',
+           markersize=10, markerfacecolor='gray'),
+    ]
 
-    # Add predictions to the original DataFrame
-    df['outlier'] = outliers
+    # Plot colored dots for actions on top of the price line
+    for i in range(len(df['date'])):
+        ax1.scatter(df['date'][i], df['price'][i], color=action_to_color(df['action'][i]))
 
-    # Print anomaly scores statistics
-    print(f'Anomaly scores: {iso_forest.decision_function(data_for_isolation_forest)}')
-    print(df[["outlier"]].describe())
+    # Plot a horizontal line for availability
+    for i in range(1, len(df['date'])):
+        color = 'green' if df['availability'][i] else 'red'
+        ax1.plot([df['date'][i-1], df['date'][i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=2)
 
-    # Print outlier count
-    print(f'Outlier count: {df[df["outlier"] == -1]["outlier"].count()}, Normal count: {df[df["outlier"] == 1]["outlier"].count()}')
+    ax1.set_xlabel('Date')
+    ax1.set_ylabel('Price', color='grey')
+    ax1.tick_params('y', colors='grey')
 
-    return df
+    # Adding battery level with secondary axis
+    ax2 = ax1.twinx()
+    ax2.plot(df['date'], df['battery'], label='Battery Level', color='green')
+    ax2.set_ylabel('Battery Level', color='green')
+    ax2.tick_params('y', colors='green')
+
+    # Formatting date on x-axis
+    ax1.xaxis.set_major_locator(mdates.DayLocator(interval=5))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    plt.xticks(rotation=45)
+
+    # Updating the custom legend for actions and availability
+    legend_elements_availability = [
+        Line2D([0], [0], color='green', lw=2, label='Available (Green)'),
+        Line2D([0], [0], color='red', lw=2, label='Not Available (Red)'),
+    ]
+    ax1.legend(handles=legend_elements + legend_elements_availability, loc='upper left', fontsize='small')
+    ax2.legend(loc='upper right', fontsize='small')
+
+    plt.title('Price and Battery Level Over Time with Colored Action Indicators and Availability Line')
+    plt.tight_layout()
+    plt.savefig('images/price_battery_level.png')
 
 if __name__ == "__main__":
     # Clean the data

@@ -46,10 +46,10 @@ class ElectricCarEnv(gym.Env):
         """
         # Update the time
         self.time_of_day += 1
-        # Update the current step
-        self.current_step += 1
         # Check if the day is over
         if self.time_of_day > 24:
+            # Update the current step
+            self.current_step += 1
             # Reset the time of day to 1AM
             self.time_of_day = 1
             # Randomly decide if the car is available for the new day

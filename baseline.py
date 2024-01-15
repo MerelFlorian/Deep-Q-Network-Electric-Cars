@@ -5,11 +5,14 @@ from algorithms import QLearningAgent, BuyLowSellHigh, EMA
 from gym import Env
 from typing import Type, Tuple
 import sys
+from datetime import datetime
+from collections import defaultdict
+from data.data_vis import visualize_bat
 
 # Constants
 NUM_EPISODES = 50  # Define the number of episodes for training
 
-def validate_agent(env: Env, agent: Type[QLearningAgent | BuyLowSellHigh | EMA], rl = False) -> None:
+def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
 
     Args:
@@ -25,17 +28,29 @@ def validate_agent(env: Env, agent: Type[QLearningAgent | BuyLowSellHigh | EMA],
         # Reset the environment
         state = env.reset()
         done = False
+        log_env = defaultdict(list)
         # Loop until the episode is done
         while not done:
             # Choose an action
             action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
+            # Log current state and action if last episode
+            if episode == NUM_EPISODES - 1:
+                log_env['battery'].append(state[0])
+                log_env['availability'].append(state[2])
+                log_env['action'].append(action)
+                log_env['price'].append(env.get_current_price())
             # Take a step
             state, reward, done, _ = env.step(action)
+            # Get datetime
+            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {0 if state[1] == 24 else state[1]:02d}:00:00", "%Y-%m-%d %H:%M:%S")
+            #Log date if last episode
+            if episode == NUM_EPISODES - 1:
+                log_env['date'].append(date)
             # Update the total reward
             total_reward += reward
         total_rewards = np.append(total_rewards, total_reward)
     # Compute and return the average reward
-    return np.mean(total_rewards)
+    return np.mean(total_rewards), log_env
 
 def qlearning() -> QLearningAgent:
     """ Function to initialize a Q-learning agent.
@@ -78,7 +93,7 @@ def ema(env: Env) -> EMA:
     # Create and return a new agent instance
     return EMA(3, 12, env.max_battery)
 
-def process_command(env: Env) -> Tuple[QLearningAgent | BuyLowSellHigh | EMA, bool]:
+def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, bool]:
     """ Function to process the command line arguments.
 
     Args:
@@ -105,6 +120,10 @@ test_agent, rl = process_command(env)
 env.data = pd.read_csv('data/validate_clean.csv') 
 
 # Test the agent
-test_performance = validate_agent(env, test_agent, rl)
+test_performance, log_env = validate_agent(env, test_agent, rl)
+
+# Visualize the battery level
+visualize_bat(log_env)
+
 
 print(f"Average reward on validation set: {test_performance}")
