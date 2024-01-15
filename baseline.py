@@ -20,7 +20,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent | BuyLowSellHigh | EMA],
     # Initialize the total reward
     total_rewards = np.array([])
     # Loop through the episodes
-    for episode in range(NUM_EPISODES):
+    for _ in range(NUM_EPISODES):
         total_reward = 0
         # Reset the environment
         state = env.reset()
