@@ -298,47 +298,63 @@ def visualize_bat(df: pd.DataFrame) -> None:
     plt.tight_layout()
     plt.savefig('images/price_battery_level.png')
 
+def change_hour_system(data: str, name)-> None:
+    """Change the hour system from 24 to 0
+
+    Args:
+        data (str): path to file
+    """
+    # Change name H24 to H0
+    df = pd.read_csv(data)
+    df.rename(columns={'H24': 'H0'}, inplace=True)
+    df.to_csv(f'{name}_clean.csv', index=False)
+
+
 if __name__ == "__main__":
-    # Clean the data
-    df = clean_data('data/train.csv')
-    # Add date columns
-    df = add_date_columns(df)
-    # Save the DataFrame to a csv file
-    df.to_csv('data/train_clean.csv', index=False)
+    # # Clean the data
+    # df = clean_data('data/train.csv')
+    # # Add date columns
+    # df = add_date_columns(df)
+    # # Save the DataFrame to a csv file
+    # df.to_csv('data/train_clean.csv', index=False)
 
-    # Clean the data
-    df = clean_data('data/train.csv')
+    # # Clean the data
+    # df = clean_data('data/train.csv')
 
-    # get deepcopy of df for candlestick chart
-    df_candle = copy.deepcopy(df)
+    # # get deepcopy of df for candlestick chart
+    # df_candle = copy.deepcopy(df)
 
-    # # Make a plot for each year
-    # for y in [2007,  2008, 2009]:
-    #     # Get candlestick dataset for each year
-    #     df_year = df_candle[df_candle['date'].dt.year == y]
-    #     # Convert dataset to candlestick chart format
-    #     ohlc_year = candlestick_format(df_year)
-    #     # Make dataframe for candlestick chart and save 
-    #     candlestick(ohlc_year, str(y))
+    # # # Make a plot for each year
+    # # for y in [2007,  2008, 2009]:
+    # #     # Get candlestick dataset for each year
+    # #     df_year = df_candle[df_candle['date'].dt.year == y]
+    # #     # Convert dataset to candlestick chart format
+    # #     ohlc_year = candlestick_format(df_year)
+    # #     # Make dataframe for candlestick chart and save 
+    # #     candlestick(ohlc_year, str(y))
 
-    # Select the first week of 2007
-    start_date = '2007-02-01'
-    end_date = '2007-02-07'
-    df_2007_first_week = df_candle[(df_candle['date'] >= start_date) & (df_candle['date'] <= end_date)]
+    # # Select the first week of 2007
+    # start_date = '2007-02-01'
+    # end_date = '2007-02-07'
+    # df_2007_first_week = df_candle[(df_candle['date'] >= start_date) & (df_candle['date'] <= end_date)]
 
-    # Convert dataset to hourly candlestick chart format
-    ohlc_hourly = hourly_candlestick_format(df_2007_first_week)
+    # # Convert dataset to hourly candlestick chart format
+    # ohlc_hourly = hourly_candlestick_format(df_2007_first_week)
 
-    # Make dataframe for hourly candlestick chart and save 
-    candlestick_hourly(ohlc_hourly, 'first_week_2007', [3, 12])  # Adding 12-hour and 26-hour EMAs
+    # # Make dataframe for hourly candlestick chart and save 
+    # candlestick_hourly(ohlc_hourly, 'first_week_2007', [3, 12])  # Adding 12-hour and 26-hour EMAs
 
-    # Convert the DataFrame to long format
-    df_long = long_format(df)
+    # # Convert the DataFrame to long format
+    # df_long = long_format(df)
     
-    # Save the DataFrame to a csv file
-    df_long.to_csv('data/long_format.csv', index=False)
+    # # Save the DataFrame to a csv file
+    # df_long.to_csv('data/long_format.csv', index=False)
 
-    df_outliers = outlier_detection('../data/train.csv')
-    print(df_outliers)
+    # Change order dataset
+    change_hour_system('train_clean.csv', 'train1')
+    change_hour_system('validate_clean.csv', 'validate1')
+
+
+
 
  

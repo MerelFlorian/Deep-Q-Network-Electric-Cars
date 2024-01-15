@@ -10,7 +10,7 @@ from collections import defaultdict
 from data.data_vis import visualize_bat
 
 # Constants
-NUM_EPISODES = 50  # Define the number of episodes for training
+NUM_EPISODES = 2  # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
@@ -23,29 +23,29 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     # Initialize the total reward
     total_rewards = np.array([])
     # Loop through the episodes
-    for _ in range(NUM_EPISODES):
+    for episode in range(NUM_EPISODES):
         total_reward = 0
         # Reset the environment
         state = env.reset()
         done = False
         log_env = defaultdict(list)
+        # Initialize step to 0
+        _ = {'step': 0}
         # Loop until the episode is done
         while not done:
             # Choose an action
             action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
+            # Get datetime
+            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {0 if state[1] == 24 else state[1]:02d}:00:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
                 log_env['battery'].append(state[0])
                 log_env['availability'].append(state[2])
                 log_env['action'].append(action)
                 log_env['price'].append(env.get_current_price())
+                log_env['date'].append(date)                
             # Take a step
             state, reward, done, _ = env.step(action)
-            # Get datetime
-            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {0 if state[1] == 24 else state[1]:02d}:00:00", "%Y-%m-%d %H:%M:%S")
-            #Log date if last episode
-            if episode == NUM_EPISODES - 1:
-                log_env['date'].append(date)
             # Update the total reward
             total_reward += reward
         total_rewards = np.append(total_rewards, total_reward)
@@ -117,13 +117,12 @@ env = ElectricCarEnv()
 # Initialize the agent
 test_agent, rl = process_command(env)
 # Load validation data into the environment
-env.data = pd.read_csv('data/validate_clean.csv') 
+env.data = pd.read_csv('data/validate1_clean.csv') 
 
 # Test the agent
 test_performance, log_env = validate_agent(env, test_agent, rl)
 
 # Visualize the battery level
 visualize_bat(log_env)
-
 
 print(f"Average reward on validation set: {test_performance}")
