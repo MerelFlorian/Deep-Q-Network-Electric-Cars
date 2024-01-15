@@ -1,6 +1,8 @@
 import pandas as pd
 from ElectricCarEnv import ElectricCarEnv
 from algorithms import EMA
+from datetime import datetime, timedelta
+
 
 def validate_agent(env, agent, num_episodes):
     """"
@@ -14,7 +16,10 @@ def validate_agent(env, agent, num_episodes):
             action = agent.choose_action(env.get_current_price(), state)
             state, reward, done, _ = env.step(action)
             total_rewards += reward
-    
+
+            # Combine hour of day and date to get datetime
+            date = datetime.strptime(f"{env.data.iloc[env.current_step]['date']} {0 if state[1] == 24 else state[1]:02d}:00:00", "%Y-%m-%d %H:%M:%S")
+
     average_reward = total_rewards / num_episodes
     return average_reward, agent
 
