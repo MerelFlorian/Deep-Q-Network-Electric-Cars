@@ -55,6 +55,8 @@ class ElectricCarEnv(gym.Env):
             # Randomly decide if the car is available for the new day
             self.car_available = np.random.choice([True, False])
         
+        action = min(action, self.max_power) if action > 0 else max(action, -self.max_power)
+        
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
             energy_change = action / self.efficiency if action > 0 else action
@@ -64,7 +66,7 @@ class ElectricCarEnv(gym.Env):
             # Calculate reward (profit from buying/selling electricity)
             price = self.get_current_price()
             #Note: - for action means buying, + for action means selling
-            reward = (min(action, 25) * price if action > 0 else 2 * max(action, -25) * price / 0.9) / 1000
+            reward = (action * price if action > 0 else 2 * action * price / 0.9) / 1000
         else:
             reward = 0
 
