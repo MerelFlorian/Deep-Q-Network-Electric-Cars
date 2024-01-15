@@ -18,7 +18,7 @@ def validate_agent(test_env, test_agent, qtable):
         state, reward, done, _ = test_env.step(action)
         total_rewards += reward
 
-    return total_reward
+    return total_rewards
 
 # Environment and Agent Initialization
 env = ElectricCarEnv()
