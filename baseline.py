@@ -10,7 +10,7 @@ from collections import defaultdict
 from data.data_vis import visualize_bat
 
 # Constants
-NUM_EPISODES = 50  # Define the number of episodes for training
+NUM_EPISODES = 1  # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
@@ -23,7 +23,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     # Initialize the total reward
     total_rewards = np.array([])
     # Loop through the episodes
-    for _ in range(NUM_EPISODES):
+    for episode in range(NUM_EPISODES):
         total_reward = 0
         # Reset the environment
         state = env.reset()
