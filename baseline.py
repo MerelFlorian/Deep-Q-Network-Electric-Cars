@@ -125,5 +125,4 @@ test_performance, log_env = validate_agent(env, test_agent, rl)
 # Visualize the battery level
 visualize_bat(log_env)
 
-
 print(f"Average reward on validation set: {test_performance}")
