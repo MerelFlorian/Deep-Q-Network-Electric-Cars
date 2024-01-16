@@ -290,6 +290,30 @@ def change_hour_system(data: str, name)-> None:
     df.rename(columns={'H24': 'H0'}, inplace=True)
     df.to_csv(f'{name}_clean.csv', index=False)
 
+def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
+    """
+    Plot the cumulative rewards for each agent
+    """
+    
+    # Convert dates to days since the start for plotting
+    days_ql = [(date - log_env_ql['date'][0]).days for date in log_env_ql['date']]
+    days_blsh = [(date - log_env_blsh['date'][0]).days for date in log_env_blsh['date']]
+    days_ema = [(date - log_env_ema['date'][0]).days for date in log_env_ema['date']]
+
+    # Plot cumulative rewards for each agent
+    plt.figure(figsize=(12, 6))
+
+    plt.plot(days_ql, log_env_ql['revenue'], label='QLearningAgent')
+    plt.plot(days_blsh, log_env_blsh['revenue'], label='BuyLowSellHigh')
+    plt.plot(days_ema, log_env_ema['revenue'], label='EMA')
+
+    plt.xlabel('Days')
+    plt.ylabel('Cumulative Reward')
+    plt.title('Cumulative Rewards over Days for Different Algorithms')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('images/cumulative_reward.png')
+
 
 if __name__ == "__main__":
     # # Clean the data

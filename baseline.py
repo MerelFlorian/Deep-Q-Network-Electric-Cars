@@ -7,7 +7,7 @@ from typing import Type, Tuple
 import sys
 from datetime import datetime
 from collections import defaultdict
-from data.data_vis import visualize_bat
+from data.data_vis import visualize_bat, plot_revenue
 
 # Constants
 NUM_EPISODES = 1  # Define the number of episodes for validating
@@ -138,6 +138,8 @@ if test_agent == "all":
     ema_agent = ema(env)
     ema_performance, ema_log_env = validate_agent(env, ema_agent, rl=False)
     print(f"Average reward on validation set for ema: {ema_performance}")
+
+    plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
 
 else:
     test_performance, log_env = validate_agent(env, test_agent, rl)
