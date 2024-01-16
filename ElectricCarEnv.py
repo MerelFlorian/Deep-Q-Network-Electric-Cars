@@ -35,6 +35,8 @@ class ElectricCarEnv(gym.Env):
         self.current_step = 0
         self.time_of_day = 1
 
+        #self.revenue = 0
+
     def step(self, action: float) -> Tuple[list, float, bool, dict]:
         """ Implements the step function for the environment.
 
@@ -85,6 +87,8 @@ class ElectricCarEnv(gym.Env):
 
         # Check if the episode is done
         done = self.current_step == len(self.data) - 1
+
+        #self.revenue += reward
 
         return self.state, reward, done, {'step':self.current_step}
 

@@ -3,7 +3,6 @@ from ElectricCarEnv import ElectricCarEnv
 from algorithms import QLearningAgent
 import matplotlib.pyplot as plt
 import pandas as pd
-from data.data_vis import plot_battery_levels
 
 def validate_agent(test_env, test_agent, qtable):
     """"
@@ -19,7 +18,7 @@ def validate_agent(test_env, test_agent, qtable):
         total_rewards += reward
 
     return total_rewards
-
+  
 # Environment and Agent Initialization
 env = ElectricCarEnv()
 state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
@@ -56,11 +55,10 @@ for episode in range(num_episodes):
 
     # Keep track of the total reward for this episode
     total_rewards.append(total_reward)
-    print(f"Episode: {episode}, Total Reward: {total_reward}")
 
     # Run validation 
     validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
-    print(f"Validation reward: {validation_reward}")
+    #print(f"Validation reward: {validation_reward}")
     total_validation_rewards.append(validation_reward)
     validation_rewards.append(validation_reward)
 
@@ -75,26 +73,24 @@ for episode in range(num_episodes):
 np.save('models/best_q_table.npy', best_q_table)
 print(f"Best Q-table saved from episode {episode} with total reward: {highest_reward}")
 
-# Plot battery levels of the best model using the function
-plot_battery_levels(best_battery_levels, title='Battery Levels of Q-Learning Agent', save_path='images/battery_levels_q_learning.png')
+    
+    # # Plot training and validation rewards on the same graph
+    # fig, ax1 = plt.subplots()
 
-# Plot training and validation rewards on the same graph
-fig, ax1 = plt.subplots()
+    # color = 'tab:red'
+    # ax1.set_xlabel('Episode')
+    # ax1.set_ylabel('Training Total Reward', color=color)
+    # ax1.plot(total_rewards, color=color)
+    # ax1.tick_params(axis='y', labelcolor=color)
 
-color = 'tab:red'
-ax1.set_xlabel('Episode')
-ax1.set_ylabel('Training Total Reward', color=color)
-ax1.plot(total_rewards, color=color)
-ax1.tick_params(axis='y', labelcolor=color)
+    # ax2 = ax1.twinx()  # Instantiate a second axes that shares the same x-axis
+    # color = 'tab:blue'
+    # ax2.set_ylabel('Validation Total Reward', color=color)
+    # ax2.plot(total_validation_rewards, color=color)
+    # ax2.tick_params(axis='y', labelcolor=color)
 
-ax2 = ax1.twinx()  # Instantiate a second axes that shares the same x-axis
-color = 'tab:blue'
-ax2.set_ylabel('Validation Total Reward', color=color)
-ax2.plot(total_validation_rewards, color=color)
-ax2.tick_params(axis='y', labelcolor=color)
+    # fig.tight_layout()  # To ensure the right y-label is not clipped
+    # plt.title('Training and Validation Rewards')
 
-fig.tight_layout()  # To ensure the right y-label is not clipped
-plt.title('Training and Validation Rewards')
-
-# Save the plot if needed
-fig.savefig('images/training_validation_rewards.png') 
+    # # Save the plot if needed
+    # fig.savefig('images/training_validation_rewards.png') 

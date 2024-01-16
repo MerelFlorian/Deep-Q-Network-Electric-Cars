@@ -210,23 +210,6 @@ def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int
     mpf.plot(ohlc, type='candle', style='charles', title=f'Hourly Candlestick Chart {description}', \
              mav=tuple(ema_spans), savefig=f'images/candlestick_hourly_{description}.png')
 
-
-def plot_battery_levels(battery_levels, title='Battery Levels', save_path='images/battery_levels.png'):
-    """
-    Plots the battery levels.
-
-    Parameters:
-    battery_levels (list): List of battery levels to plot.
-    title (str): Title for the plot.
-    """
-    plt.figure(figsize=(10, 4))
-    plt.plot(battery_levels)
-    plt.title(title)
-    plt.xlabel('Time Step')
-    plt.ylabel('Battery Level')
-    plt.grid(True)
-    plt.savefig(save_path, bbox_inches='tight')
-
 def action_to_color(action):
     """
     Maps the action value to a color.
