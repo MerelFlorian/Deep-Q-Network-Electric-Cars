@@ -233,7 +233,6 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     """
     # Convert defaultdict to DataFrame and limit the data to the first 48 rows (2 days)
     df = pd.DataFrame(df).head(72)
-    print(df['action'])
 
     # Ensure the 'date' column is in datetime format
     df['date'] = pd.to_datetime(df['date'])
