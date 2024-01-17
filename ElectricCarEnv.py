@@ -35,7 +35,7 @@ class ElectricCarEnv(gym.Env):
         self.current_step = 0
         self.time_of_day = 1
 
-    def step(self, action: float) -> Tuple[list, float, bool, dict]:
+    def step(self, action: float) -> Tuple[np.ndarray, float, bool, dict]:
         """ Implements the step function for the environment.
 
         Args:
@@ -53,13 +53,13 @@ class ElectricCarEnv(gym.Env):
             # Reset the time of day to 1AM
             self.time_of_day = 1
             # Randomly decide if the car is available for the new day
-            self.car_available = np.random.choice([True, False])
+            self.car_available = np.random.choice([0, 1])
         
         action = min(action, self.max_power) if action > 0 else max(action, -self.max_power)
         
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
-            energy_change = -(action / self.efficiency if action > 0 else action)
+            energy_change = (action / self.efficiency if action > 0 else action)
             # Update the battery level based on the action and efficiency
             self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
 
@@ -81,14 +81,16 @@ class ElectricCarEnv(gym.Env):
             self.battery_level = self.min_required_battery
 
         # Update the state
-        self.state = [self.battery_level, self.time_of_day, self.car_available]
+        self.state = np.array([self.battery_level, self.time_of_day, self.car_available])
 
         # Check if the episode is done
         done = self.current_step == len(self.data) - 1
 
+        #self.revenue += reward
+
         return self.state, reward, done, {'step':self.current_step}
 
-    def reset(self) -> list:
+    def reset(self) -> np.ndarray:
         """ Resets the environment.
         """
         # Start with a minimum battery level
@@ -97,9 +99,9 @@ class ElectricCarEnv(gym.Env):
         self.time_of_day = 1
         self.current_step = 0
         # Generate a random car availability
-        self.car_available = np.random.choice([True, False])
+        self.car_available = np.random.choice([0, 1])
         # Initialize the state
-        self.state = [self.battery_level, self.time_of_day, self.car_available]
+        self.state = np.array([self.battery_level, self.time_of_day, self.car_available])
 
         return self.state
 

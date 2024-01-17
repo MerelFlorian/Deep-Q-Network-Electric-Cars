@@ -211,23 +211,6 @@ def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int
     mpf.plot(ohlc, type='candle', style='charles', title=f'Hourly Candlestick Chart {description}', \
              mav=tuple(ema_spans), savefig=f'images/candlestick_hourly_{description}.png')
 
-
-def plot_battery_levels(battery_levels, title='Battery Levels', save_path='images/battery_levels.png'):
-    """
-    Plots the battery levels.
-
-    Parameters:
-    battery_levels (list): List of battery levels to plot.
-    title (str): Title for the plot.
-    """
-    plt.figure(figsize=(10, 4))
-    plt.plot(battery_levels)
-    plt.title(title)
-    plt.xlabel('Time Step')
-    plt.ylabel('Battery Level')
-    plt.grid(True)
-    plt.savefig(save_path, bbox_inches='tight')
-
 def action_to_color(action):
     """
     Maps the action value to a color.
@@ -313,6 +296,31 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     plt.tight_layout()
     plt.savefig(f'images/price_battery_level_{algorithm}.png')
 
+def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
+    """
+    Plot the cumulative rewards for each agent
+    """
+    
+    # Convert dates to days since the start for plotting
+    days_ql = [(date - log_env_ql['date'][0]).days for date in log_env_ql['date']]
+    days_blsh = [(date - log_env_blsh['date'][0]).days for date in log_env_blsh['date']]
+    days_ema = [(date - log_env_ema['date'][0]).days for date in log_env_ema['date']]
+
+    # Plot cumulative rewards for each agent
+    plt.figure(figsize=(12, 6))
+
+    plt.plot(days_ql, log_env_ql['revenue'], label='QLearningAgent')
+    plt.plot(days_blsh, log_env_blsh['revenue'], label='BuyLowSellHigh')
+    plt.plot(days_ema, log_env_ema['revenue'], label='EMA')
+
+    plt.xlabel('Days')
+    plt.ylabel('Cumulative Reward')
+    plt.title('Cumulative Rewards over Days for Baseline Algorithms')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('images/cumulative_reward.png')
+
+
 if __name__ == "__main__":
     # Clean the data
     df = clean_data('data/train.csv')
@@ -350,5 +358,6 @@ if __name__ == "__main__":
     # # Convert the DataFrame to long format
     # df_long = long_format(df)
     
+    # # Save the DataFrame to a csv file
     # # Save the DataFrame to a csv file
     # df_long.to_csv('data/long_format.csv', index=False) 
