@@ -36,7 +36,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             # Choose an action
             action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
             # Get datetime
-            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {int(state[1])-1:02d}:00:00", "%Y-%m-%d %H:%M:%S")
+            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {int(state[1])-1:02d}:30:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
                 log_env['battery'].append(state[0])
