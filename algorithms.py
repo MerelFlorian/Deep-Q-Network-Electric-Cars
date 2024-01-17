@@ -148,13 +148,13 @@ class EMA:
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 2 and 3 <= state[1] <= 6:
+          if self.sl_cross > 1 and 3 <= state[1] <= 6:
             self.action = -(self.max_battery - state[0])
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 2:
+          if self.ls_cross > 6:
               self.action = state[0]
       # Otherwise, do nothing
       else:
@@ -207,3 +207,10 @@ class BuyLowSellHigh:
           self.action = state[0]
           
       return self.action
+  
+class Sell:
+    def __init__(self):
+        self.max_battery = 50
+
+    def choose_action(self, state: list) -> float:
+        return state[0]
