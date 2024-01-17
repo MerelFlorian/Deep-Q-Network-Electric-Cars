@@ -59,7 +59,7 @@ class ElectricCarEnv(gym.Env):
         
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
-            energy_change = action / self.efficiency if action > 0 else action
+            energy_change = -(action / self.efficiency if action > 0 else action)
             # Update the battery level based on the action and efficiency
             self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
 

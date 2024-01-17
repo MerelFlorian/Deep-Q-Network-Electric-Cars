@@ -62,7 +62,7 @@ def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
     return torch.tensor(returns)
 
 
-def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.5, epsilon=0.05, sequence_length=5):
+def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.3, epsilon=0.05, sequence_length=7):
     """ Trains a policy network using the policy gradient algorithm.
 
     Args:
