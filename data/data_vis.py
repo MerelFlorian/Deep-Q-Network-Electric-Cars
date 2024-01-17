@@ -324,6 +324,20 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
 if __name__ == "__main__":
     # Clean the data
     df = clean_data('data/train.csv')
+
+    # FOr all hours, remove any rows where the value is greater than 150
+    for i in range(1, 25):
+        df = df[df[f'H{i}'] < 150]
+    # For all hours, remove any rows where the value is less than 1
+    for i in range(1, 25):
+        df = df[df[f'H{i}'] > 1]
+
+    # Compute the median across each hour of the dataset
+    df_mean = df.mean()
+    print(df_mean)
+
+
+
     # # Add date columns
     # df = add_date_columns(df)
     # # Save the DataFrame to a csv file

@@ -10,7 +10,7 @@ from collections import defaultdict
 from data.data_vis import visualize_bat, plot_revenue
 
 # Constants
-NUM_EPISODES = 1  # Define the number of episodes for training
+NUM_EPISODES = 100  # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
@@ -109,7 +109,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     if sys.argv[1] == 'qlearning':
         return qlearning(), True, 'Q-learning'
     elif sys.argv[1] == 'blsh':
-        return buylowsellhigh(env), True, 'BLSH'
+        return buylowsellhigh(env), False, 'BLSH'
     elif sys.argv[1] == 'ema':
         return ema(env), False, "EMA"
     else: 
