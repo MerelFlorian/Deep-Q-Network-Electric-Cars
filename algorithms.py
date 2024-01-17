@@ -142,23 +142,20 @@ class EMA:
       
       # Choose the action
       # If the long EMA has not been calculated yet buy the max amount possible
-      if len(self.long_ema_history) < self.len_long and 3 <= state[1] <= 5:
-          self.action = -(self.max_battery - state[0]) / 3
-          self.amount = 3
+      if len(self.long_ema_history) < self.len_long and state[1] == 4:
+          self.action = -(self.max_battery - state[0])
       # If the short EMA is below the long EMA, buy
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 3:
-            if self.sl_cross == 2:
-                self.amount = 7 - state[1]
-            self.action = -(self.max_battery - state[0]) / self.amount
+          if self.sl_cross > 2 and 3 <= state[1] <= 6:
+            self.action = -(self.max_battery - state[0])
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 1:
-              self.action = state[0] / self.amount
+          if self.ls_cross > 2:
+              self.action = state[0]
       # Otherwise, do nothing
       else:
           self.action = 0
@@ -200,9 +197,9 @@ class BuyLowSellHigh:
       # Choose the action 
 
       # Buy in the morning
-      if state[1] == 4:
+      if 4 <= state[1] <= 5:
           # If it is a new day, buy one seventh of the max battery
-          self.action -= (self.max_battery - state[0])
+          self.action -= (self.max_battery - state[0]) / 2
           self.amount = self.action
           # Append the action to the history
           self.buy = 2 * price
