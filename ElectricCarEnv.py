@@ -86,6 +86,8 @@ class ElectricCarEnv(gym.Env):
         # Check if the episode is done
         done = self.current_step == len(self.data) - 1
 
+        #self.revenue += reward
+
         return self.state, reward, done, {'step':self.current_step}
 
     def reset(self) -> np.ndarray:
