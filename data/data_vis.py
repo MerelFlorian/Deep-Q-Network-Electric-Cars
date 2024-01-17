@@ -9,7 +9,7 @@ import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from collections import defaultdict
-from datetime import datetime
+import datetime  # Importing the datetime module
 
 
 
@@ -252,13 +252,21 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     colors = [action_to_color(a) for a in df['action']]
     ax1.scatter(df['date'], df['price'], color=colors)
 
+    # Add a solid block of gray for the period between 8:00 AM and 6:00 PM where battery is not available
+    for i in range(len(df['date'])):
+        date = df['date'].iloc[i]
+        start_block = datetime.datetime(date.year, date.month, date.day, 8, 0, 0)
+        end_block = datetime.datetime(date.year, date.month, date.day, 18, 0, 0)
+        if not df['availability'].iloc[i] and start_block <= date < end_block:
+            ax1.fill_betweenx([min(df['price']), max(df['price'])], start_block, end_block, color='gray', alpha=0.5)
+
     # Plot a horizontal line for availability
     for i in range(1, len(df['date'])):
         color = 'green' if df['availability'].iloc[i] else 'black'
         ax1.plot([df['date'].iloc[i-1], df['date'].iloc[i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=5)
 
-    ax1.set_xlabel('Date')
-    ax1.set_ylabel('Price', color='black')
+    ax1.set_xlabel('Time (Hours)')
+    ax1.set_ylabel('Price (Euros/MWh)', color='black')
     ax1.tick_params('y', colors='black')
 
     # Formatting the x-axis to display time in hours
@@ -278,12 +286,15 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
         Line2D([0], [0], marker='o', color='w', label='Buy', 
                markersize=10, markerfacecolor='red'),
         Line2D([0], [0], marker='o', color='w', label='Do nothing',
-            markersize=10, markerfacecolor='gray')
+            markersize=10, markerfacecolor='gray'),
+        # Additional legend element for unavailability
+        Line2D([0], [0], color='gray', lw=4, label='Unavailable 8 AM-6 PM')
     ]
 
     # Create custom legend elements for availability
     legend_elements_availability = [
         Line2D([0], [0], color='green', lw=2, label='Available (Green)'),
+        Line2D([0], [0], color='black', lw=2, label='Unavailable (Black)')
     ]
 
     # Combine the legend elements
