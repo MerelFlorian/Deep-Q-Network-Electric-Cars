@@ -4,12 +4,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import mplfinance as mpf
-import copy 
-import matplotlib.pyplot as plt
 from typing import List
 import matplotlib.dates as mdates
-from collections import defaultdict
 from matplotlib.lines import Line2D
+from matplotlib.colors import Normalize, LinearSegmentedColormap
+from collections import defaultdict
+from datetime import datetime
+
 
 
 def clean_data(csv_file: str) -> pd.DataFrame:
@@ -213,7 +214,7 @@ def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int
 def action_to_color(action):
     """
     Maps the action value to a color.
-    Positive actions are mapped to shades of blue, negative to red, and zero to white.
+    Positive actions are mapped to shades of blue, negative to orange, and zero to white.
     """
     if action > 0:
         return (0, 0, min(1, action), 1)  # Shades of blue
@@ -222,73 +223,78 @@ def action_to_color(action):
     else:
         return (0.5, 0.5, 0.5, 1)  # gray for zero
 
-def visualize_bat(df: pd.DataFrame) -> None:
-    """Visualize the data"""
-    # Plot 2 days
-    df = defaultdict(list, {k: v[:48] for k, v in df.items()})
+def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
+    """
+    Visualize the battery level over time with colored action indicators and availability line.
 
-    # Creating a new figure
+    Args:
+        df (pd.DataFrame): DataFrame containing the data
+        algorithm (str): Algorithm used
+    """
+    # Convert defaultdict to DataFrame and limit the data to the first 48 rows (2 days)
+    df = pd.DataFrame(df).head(72)
+
+    # Ensure the 'date' column is in datetime format
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Create a custom colormap
+    cmap = LinearSegmentedColormap.from_list("action_colormap", [(1, 0, 0), (0.5, 0.5, 0.5), (0, 0, 1)])
+    norm = Normalize(vmin=df['action'].min(), vmax=df['action'].max())
+
+    # Creating a new figure and axes
     fig, ax1 = plt.subplots(figsize=(10, 6))
+    plt.subplots_adjust(right=0.85)  # Adjust the right margin
 
     # Plot price line
-    ax1.plot(df['date'], df['price'], label='Price', color='grey', alpha=0.5)
-
-    # Create custom legend elements for the updated color scheme
-    legend_elements = [
-    Line2D([0], [0], marker='o', color='w', label='Positive Action (Blue)',
-           markersize=10, markerfacecolor='blue'),
-    Line2D([0], [0], marker='o', color='w', label='Negative Action (Red)',
-           markersize=10, markerfacecolor='red'),
-    Line2D([0], [0], marker='o', color='w', label='Zero Action (Gray)',
-           markersize=10, markerfacecolor='gray'),
-    ]
+    ax1.plot(df['date'], df['price'], label='Price', color='black', alpha=0.5)
 
     # Plot colored dots for actions on top of the price line
-    for i in range(len(df['date'])):
-        ax1.scatter(df['date'][i], df['price'][i], color=action_to_color(df['action'][i]))
+    colors = [cmap(norm(a)) for a in df['action']]
+    ax1.scatter(df['date'], df['price'], color=colors)
 
     # Plot a horizontal line for availability
     for i in range(1, len(df['date'])):
-        color = 'green' if df['availability'][i] else 'red'
-        ax1.plot([df['date'][i-1], df['date'][i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=2)
+        color = 'green' if df['availability'].iloc[i] else 'black'
+        ax1.plot([df['date'].iloc[i-1], df['date'].iloc[i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=5)
 
     ax1.set_xlabel('Date')
-    ax1.set_ylabel('Price', color='grey')
-    ax1.tick_params('y', colors='grey')
+    ax1.set_ylabel('Price', color='black')
+    ax1.tick_params('y', colors='black')
+
+    # Formatting the x-axis to display time in hours
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=2))
 
     # Adding battery level with secondary axis
     ax2 = ax1.twinx()
-    ax2.plot(df['date'], df['battery'], label='Battery Level', color='green')
-    ax2.set_ylabel('Battery Level', color='green')
-    ax2.tick_params('y', colors='green')
+    ax2.plot(df['date'], df['battery'], label='Battery Level', color='purple')
+    ax2.set_ylabel('Battery Level', color='purple')
+    ax2.tick_params('y', colors='purple')
 
-    # Formatting date on x-axis
-    ax1.xaxis.set_major_locator(mdates.DayLocator(interval=5))
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    plt.xticks(rotation=45)
+    # Create custom legend elements for actions
+    legend_elements_actions = [
+        Line2D([0], [0], marker='o', color='w', label='Sell',
+            markersize=10, markerfacecolor='blue'),
+        Line2D([0], [0], marker='o', color='w', label='Buy', 
+               markersize=10, markerfacecolor='red'),
+        Line2D([0], [0], marker='o', color='w', label='Do nothing',
+            markersize=10, markerfacecolor='gray')
+    ]
 
-    # Updating the custom legend for actions and availability
+    # Create custom legend elements for availability
     legend_elements_availability = [
         Line2D([0], [0], color='green', lw=2, label='Available (Green)'),
-        Line2D([0], [0], color='red', lw=2, label='Not Available (Red)'),
     ]
-    ax1.legend(handles=legend_elements + legend_elements_availability, loc='upper left', fontsize='small')
-    ax2.legend(loc='upper right', fontsize='small')
 
-    plt.title('Price and Battery Level Over Time with Colored Action Indicators and Availability Line')
+    # Combine the legend elements
+    combined_legend_elements = legend_elements_actions + legend_elements_availability
+
+    # Add the combined custom legend to one of the axes
+    ax1.legend(handles=combined_legend_elements, loc='upper left', fontsize='small')
+
+    plt.title(f'Price and Battery Level Over Time for {algorithm} [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]')
     plt.tight_layout()
-    plt.savefig('images/price_battery_level.png')
-
-def change_hour_system(data: str, name)-> None:
-    """Change the hour system from 24 to 0
-
-    Args:
-        data (str): path to file
-    """
-    # Change name H24 to H0
-    df = pd.read_csv(data)
-    df.rename(columns={'H24': 'H0'}, inplace=True)
-    df.to_csv(f'{name}_clean.csv', index=False)
+    plt.savefig(f'images/price_battery_level_{algorithm}.png')
 
 def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     """
@@ -316,8 +322,8 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
 
 
 if __name__ == "__main__":
-    # # Clean the data
-    # df = clean_data('data/train.csv')
+    # Clean the data
+    df = clean_data('data/train.csv')
     # # Add date columns
     # df = add_date_columns(df)
     # # Save the DataFrame to a csv file
@@ -353,13 +359,5 @@ if __name__ == "__main__":
     # df_long = long_format(df)
     
     # # Save the DataFrame to a csv file
-    # df_long.to_csv('data/long_format.csv', index=False)
-
-    # Change order dataset
-    change_hour_system('train_clean.csv', 'train1')
-    change_hour_system('validate_clean.csv', 'validate1')
-
-
-
-
- 
+    # # Save the DataFrame to a csv file
+    # df_long.to_csv('data/long_format.csv', index=False) 

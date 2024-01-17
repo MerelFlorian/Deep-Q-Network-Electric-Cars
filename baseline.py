@@ -10,7 +10,7 @@ from collections import defaultdict
 from data.data_vis import visualize_bat, plot_revenue
 
 # Constants
-NUM_EPISODES = 1  # Define the number of episodes for validating
+NUM_EPISODES = 1  # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
@@ -36,7 +36,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             # Choose an action
             action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
             # Get datetime
-            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {0 if state[1] == 24 else state[1]:02d}:00:00", "%Y-%m-%d %H:%M:%S")
+            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {state[1]-1:02d}:00:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
                 log_env['battery'].append(state[0])
@@ -107,7 +107,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema')
         exit()
     if sys.argv[1] == 'qlearning':
-        return qlearning(), True
+        return qlearning(), True, 'Q-learning'
     elif sys.argv[1] == 'blsh':
         return buylowsellhigh(env), True
     elif sys.argv[1] == 'ema':
@@ -118,7 +118,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
 # Initialize the environment
 env = ElectricCarEnv()
 # Initialize the agent
-test_agent, rl = process_command(env)
+test_agent, rl, algorithm = process_command(env)
 # Load validation data into the environment
 env.data = pd.read_csv('data/validate_clean.csv') 
 
@@ -144,7 +144,7 @@ if test_agent == "all":
 else:
     test_performance, log_env = validate_agent(env, test_agent, rl)
 
-    # Visualize the battery level
-    visualize_bat(log_env)
+# Visualize the battery level
+visualize_bat(log_env, algorithm)
 
     print(f"Average reward on validation set: {test_performance}")
