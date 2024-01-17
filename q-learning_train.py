@@ -73,24 +73,3 @@ for episode in range(num_episodes):
 np.save('models/best_q_table.npy', best_q_table)
 print(f"Best Q-table saved from episode {episode} with total reward: {highest_reward}")
 
-    
-    # # Plot training and validation rewards on the same graph
-    # fig, ax1 = plt.subplots()
-
-    # color = 'tab:red'
-    # ax1.set_xlabel('Episode')
-    # ax1.set_ylabel('Training Total Reward', color=color)
-    # ax1.plot(total_rewards, color=color)
-    # ax1.tick_params(axis='y', labelcolor=color)
-
-    # ax2 = ax1.twinx()  # Instantiate a second axes that shares the same x-axis
-    # color = 'tab:blue'
-    # ax2.set_ylabel('Validation Total Reward', color=color)
-    # ax2.plot(total_validation_rewards, color=color)
-    # ax2.tick_params(axis='y', labelcolor=color)
-
-    # fig.tight_layout()  # To ensure the right y-label is not clipped
-    # plt.title('Training and Validation Rewards')
-
-    # # Save the plot if needed
-    # fig.savefig('images/training_validation_rewards.png') 

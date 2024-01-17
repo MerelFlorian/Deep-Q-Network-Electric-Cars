@@ -309,7 +309,7 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
 
     plt.xlabel('Days')
     plt.ylabel('Cumulative Reward')
-    plt.title('Cumulative Rewards over Days for Different Algorithms')
+    plt.title('Cumulative Rewards over Days for Baseline Algorithms')
     plt.legend()
     plt.grid(True)
     plt.savefig('images/cumulative_reward.png')
