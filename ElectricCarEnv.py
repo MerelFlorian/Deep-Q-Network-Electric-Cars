@@ -54,7 +54,7 @@ class ElectricCarEnv(gym.Env):
             self.time_of_day = 1
             # Randomly decide if the car is available for the new day
             self.car_available = np.random.choice([0, 1])
-        
+  
         action = min(action, self.max_power) if action > 0 else max(action, -self.max_power)
         
         # From 8AM to 6PM, unavailable cars can't be charged

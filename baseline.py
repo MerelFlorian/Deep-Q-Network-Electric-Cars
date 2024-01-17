@@ -126,17 +126,17 @@ env.data = pd.read_csv('data/validate_clean.csv')
 if test_agent == "all":
     # Validate Q-Learning Agent
     q_agent = qlearning()
-    q_performance, ql_log_env = validate_agent(env, q_agent, rl=True)
+    q_performance, ql_log_env = validate_agent(env, q_agent, rl)
     print(f"Average reward on validation set for q learning: {q_performance}")
 
     # Validate BuyLowSellHigh Agent
     blsh_agent = buylowsellhigh(env)
-    blsh_performance, blsh_log_env = validate_agent(env, blsh_agent, rl=False)
+    blsh_performance, blsh_log_env = validate_agent(env, blsh_agent, rl)
     print(f"Average reward on validation set for blsh: {blsh_performance}")
 
     # Validate EMA Agent
     ema_agent = ema(env)
-    ema_performance, ema_log_env = validate_agent(env, ema_agent, rl=False)
+    ema_performance, ema_log_env = validate_agent(env, ema_agent)
     print(f"Average reward on validation set for ema: {ema_performance}")
 
     plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
