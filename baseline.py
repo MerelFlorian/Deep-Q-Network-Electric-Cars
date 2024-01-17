@@ -36,7 +36,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             # Choose an action
             action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
             # Get datetime
-            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {state[1]-1:02d}:00:00", "%Y-%m-%d %H:%M:%S")
+            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {int(state[1])-1:02d}:00:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
                 log_env['battery'].append(state[0])
@@ -109,9 +109,9 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     if sys.argv[1] == 'qlearning':
         return qlearning(), True, 'Q-learning'
     elif sys.argv[1] == 'blsh':
-        return buylowsellhigh(env), False
+        return buylowsellhigh(env), False, 'BLSH'
     elif sys.argv[1] == 'ema':
-        return ema(env), False
+        return ema(env), False, "EMA"
     else: 
         return "all", True
         
@@ -146,5 +146,4 @@ else:
 
 # Visualize the battery level
 visualize_bat(log_env, algorithm)
-
-    print(f"Average reward on validation set: {test_performance}")
+print(f"Average reward on validation set: {test_performance}")

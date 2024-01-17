@@ -211,17 +211,17 @@ def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int
     mpf.plot(ohlc, type='candle', style='charles', title=f'Hourly Candlestick Chart {description}', \
              mav=tuple(ema_spans), savefig=f'images/candlestick_hourly_{description}.png')
 
-def action_to_color(action):
+def action_to_color(action)-> None:
     """
     Maps the action value to a color.
-    Positive actions are mapped to shades of blue, negative to orange, and zero to white.
+    Positive actions (buying) are mapped to red, negative (selling) to blue, and zero (doing nothing) to gray.
     """
-    if action > 0:
-        return (0, 0, min(1, action), 1)  # Shades of blue
-    elif action < 0:
-        return (min(1, -action), 0, 0, 1)  # Shades of red
+    if action < 0:
+        return (1, 0, 0, 1)  # Solid red for buying
+    elif action > 0:
+        return (0, 0, 1, 1)  # Solid blue for selling
     else:
-        return (0.5, 0.5, 0.5, 1)  # gray for zero
+        return (0.5, 0.5, 0.5, 1)  # Gray for doing nothing
 
 def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     """
@@ -233,6 +233,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     """
     # Convert defaultdict to DataFrame and limit the data to the first 48 rows (2 days)
     df = pd.DataFrame(df).head(72)
+    print(df['action'])
 
     # Ensure the 'date' column is in datetime format
     df['date'] = pd.to_datetime(df['date'])
@@ -249,7 +250,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     ax1.plot(df['date'], df['price'], label='Price', color='black', alpha=0.5)
 
     # Plot colored dots for actions on top of the price line
-    colors = [cmap(norm(a)) for a in df['action']]
+    colors = [action_to_color(a) for a in df['action']]
     ax1.scatter(df['date'], df['price'], color=colors)
 
     # Plot a horizontal line for availability
