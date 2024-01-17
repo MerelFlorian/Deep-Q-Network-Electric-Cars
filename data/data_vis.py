@@ -330,11 +330,14 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     plt.legend()
     plt.grid(True)
     plt.savefig('images/cumulative_reward.png')
-
-
 if __name__ == "__main__":
     # Clean the data
     df = clean_data('data/train.csv')
+
+    # Compute the median across each hour of the dataset
+    df_mean = df.mean()
+    print(df_mean)
+
     # # Add date columns
     # df = add_date_columns(df)
     # # Save the DataFrame to a csv file

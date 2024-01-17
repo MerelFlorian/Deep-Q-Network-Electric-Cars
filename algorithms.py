@@ -142,23 +142,20 @@ class EMA:
       
       # Choose the action
       # If the long EMA has not been calculated yet buy the max amount possible
-      if len(self.long_ema_history) < self.len_long and 3 <= state[1] <= 5:
-          self.action = -(self.max_battery - state[0]) / 3
-          self.amount = 3
+      if len(self.long_ema_history) < self.len_long and state[1] == 4:
+          self.action = -(self.max_battery - state[0])
       # If the short EMA is below the long EMA, buy
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 3:
-            if self.sl_cross == 2:
-                self.amount = 7 - state[1]
-            self.action = -(self.max_battery - state[0]) / self.amount
+          if self.sl_cross > 1 and 3 <= state[1] <= 6:
+            self.action = -(self.max_battery - state[0])
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 1:
-              self.action = state[0] / self.amount
+          if self.ls_cross > 6:
+              self.action = state[0]
       # Otherwise, do nothing
       else:
           self.action = 0
@@ -180,8 +177,10 @@ class BuyLowSellHigh:
       # Parameters
       self.new_day = False
       self.action = None
+      self.history = np.array([])
+      self.count = 0
   
-  def choose_action(self, state: list) -> float:
+  def choose_action(self, price: float,  state: list) -> float:
       """ Chooses an action for the current time step.
 
       Args:
@@ -198,16 +197,20 @@ class BuyLowSellHigh:
       # Choose the action 
 
       # Buy in the morning
-      if 3 <= state[1] <= 5:
+      if 4 <= state[1] <= 5:
           # If it is a new day, buy one seventh of the max battery
-          if self.new_day:
-              self.action -= (self.max_battery - state[0]) / 3
-              self.amount = self.action
-              self.new_day = False
-          # Otherwise, buy the same amount as in the previous time step
-          else:
-              self.action += self.amount
-      elif 17 <= state[1] <= 20:
-          self.action = state[0] / (3 if state[2] else 1)
+          self.action -= (self.max_battery - state[0]) / 2
+          self.amount = self.action
+          # Append the action to the history
+          self.buy = 2 * price
+      elif 7 <= state[1] <= 20 and price >= self.buy:
+          self.action = state[0]
           
       return self.action
+  
+class Sell:
+    def __init__(self):
+        self.max_battery = 50
+
+    def choose_action(self, state: list) -> float:
+        return state[0]
