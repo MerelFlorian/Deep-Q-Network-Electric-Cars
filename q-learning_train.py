@@ -58,7 +58,6 @@ for episode in range(num_episodes):
 
     # Run validation 
     validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
-    #print(f"Validation reward: {validation_reward}")
     total_validation_rewards.append(validation_reward)
     validation_rewards.append(validation_reward)
 
@@ -68,6 +67,8 @@ for episode in range(num_episodes):
         best_episode = episode
         best_q_table = agent.q_table.copy()
         best_battery_levels = battery_levels.copy()
+
+    print(f"Episode {episode} reward: {total_reward} | Validation reward: {validation_reward}")
 
 # Save the best Q-table
 np.save('models/best_q_table.npy', best_q_table)
