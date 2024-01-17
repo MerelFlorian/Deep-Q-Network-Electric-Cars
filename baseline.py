@@ -109,7 +109,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     if sys.argv[1] == 'qlearning':
         return qlearning(), True, 'Q-learning'
     elif sys.argv[1] == 'blsh':
-        return buylowsellhigh(env), False, 'BLSH'
+        return buylowsellhigh(env), True, 'BLSH'
     elif sys.argv[1] == 'ema':
         return ema(env), False, "EMA"
     else: 
