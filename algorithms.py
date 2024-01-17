@@ -181,7 +181,7 @@ class BuyLowSellHigh:
       self.new_day = False
       self.action = None
   
-  def choose_action(self, price: float, state: list, ) -> float:
+  def choose_action(self, state: list) -> float:
       """ Chooses an action for the current time step.
 
       Args:
