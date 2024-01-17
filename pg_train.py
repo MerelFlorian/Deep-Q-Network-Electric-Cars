@@ -9,7 +9,7 @@ import random
 import numpy as np
 
 class LSTM_PolicyNetwork(nn.Module):
-    def __init__(self, state_size, action_size, hidden_size=32, lstm_layers=3):
+    def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=2):
         super(LSTM_PolicyNetwork, self).__init__()
         self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
         self.fc_mean = nn.Linear(hidden_size, action_size)
@@ -62,7 +62,7 @@ def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
     return torch.tensor(returns)
 
 
-def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.3, epsilon=0.05, sequence_length=7):
+def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.6, epsilon=0.2, sequence_length=12):
     """ Trains a policy network using the policy gradient algorithm.
 
     Args:
