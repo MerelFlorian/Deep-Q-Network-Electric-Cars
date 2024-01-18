@@ -7,7 +7,7 @@ from typing import Type, Tuple
 import sys
 from datetime import datetime
 from collections import defaultdict
-from data.data_vis import visualize_bat, plot_revenue
+from data.data_vis import visualize_bat, plot_revenue, visualize_battery
 
 # Constants
 NUM_EPISODES = 1 # Define the number of episodes for training
@@ -145,5 +145,5 @@ else:
     test_performance, log_env = validate_agent(env, test_agent, rl)
 
     # Visualize the battery level
-    visualize_bat(log_env, algorithm)
+    visualize_battery(log_env, algorithm)
     print(f"Average reward on validation set: {test_performance}")

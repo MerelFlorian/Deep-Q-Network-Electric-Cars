@@ -2,6 +2,7 @@
 
 # imports
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 from typing import List
@@ -9,6 +10,7 @@ import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 from collections import defaultdict
+import matplotlib.cm as cm
 import datetime  # Importing the datetime module
 
 
@@ -303,9 +305,111 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     # Add the combined custom legend to one of the axes
     ax1.legend(handles=combined_legend_elements, loc='upper left', fontsize='small')
 
-    plt.title(f'Price and Battery Level Over Time for {algorithm} [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]')
+    plt.title(f'Price and Battery Level Over Time for {algorithm}')
     plt.tight_layout()
     plt.savefig(f'images/price_battery_level_{algorithm}.png')
+
+def visualize_battery(df: pd.DataFrame, algorithm: str) -> None:
+    """
+    Visualize the battery level over time with colored action indicators and availability line.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the data
+        algorithm (str): Algorithm used
+    """
+    # Convert defaultdict to DataFrame and limit the data to the first 72 rows (3 days)
+    df = pd.DataFrame(df).head(72)
+
+    # Ensure the 'date' column is in datetime format
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Create a custom colormap for actions
+    cmap = LinearSegmentedColormap.from_list(
+    "action_colormap",
+    [
+        (0.6, 0, 0),  # dark red for negative actions
+        (0.5, 0.5, 0.5),    # white for neutral actions (close to zero)
+        (0, 0, 0.6)   # dark blue for positive actions
+    ]
+)
+    norm = Normalize(vmin=df['action'].min(), vmax=df['action'].max())
+
+    # Creating a new figure and axes
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    plt.subplots_adjust(right=0.85)  # Adjust the right margin
+
+    # Plot price line
+    ax1.plot(df['date'], df['price'], label='Price', color='black', alpha=0.5)
+
+    # Calculate the battery level adjustments here instead of inside the loop
+    battery_changes = df['availability'].diff() < 0  # Change of availability from 1 to 0
+    df.loc[battery_changes, 'battery'] -= 20  # Decrease the battery by 20 kWh when the car becomes unavailable
+
+    # Plot colored dots for actions on top of the price line
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    colors = sm.to_rgba(df['action'])
+    ax1.scatter(df['date'], df['price'], color=colors, zorder=2)
+
+    # Color bar representing the actions
+    cbar = plt.colorbar(sm, ax=ax1, orientation='vertical')
+    cbar.set_label('Actions (kWh)')
+
+    # Plot a horizontal line for availability
+    for i in range(1, len(df['date'])):
+        color = 'green' if df['availability'].iloc[i] else 'black'
+        ax1.plot([df['date'].iloc[i-1], df['date'].iloc[i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=5)
+
+    ax1.set_xlabel('Time (Hours)')
+    ax1.set_ylabel('Price (Euros/MWh)', color='black')
+    ax1.tick_params('y', colors='black')
+
+    # Formatting the x-axis to display time in hours
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=2))
+
+    # Adding battery level with secondary axis
+    ax2 = ax1.twinx()
+    ax2.plot(df['date'], df['battery'], label='Battery Level', color='purple', zorder=4)
+    ax2.set_ylabel('Battery Level', color='purple')
+    ax2.tick_params('y', colors='purple')
+
+    for i in range(len(df['date'])):
+        current_date = df['date'].iloc[i]
+        if i > 0 and df['availability'].iloc[i] == 0 and df['availability'].iloc[i-1] == 1:
+            # When the car becomes unavailable, decrease the battery level by 20 kWh
+            df.loc[i:, 'battery'] -= 20  # Adjust subsequent battery levels
+            ax2.plot(df['date'], df['battery'], label='Battery Level', color='purple')  # Update the plot
+
+        # Highlight the unavailable period
+        if df['availability'].iloc[i] == 0:
+            start_block = datetime.datetime.combine(current_date.date(), datetime.time(8, 0))
+            end_block = datetime.datetime.combine(current_date.date(), datetime.time(18, 0))
+            ax1.fill_betweenx([0, max(df['price'])], start_block, end_block, color='gray', alpha=0.5, zorder=1)
+
+    # Create custom legend elements for actions
+    legend_elements_actions = [
+        # Additional legend element for unavailability
+        Line2D([0], [0], color='gray', lw=4, label='Unavailable 8 AM-6 PM')
+    ]
+
+    # Create custom legend elements for availability
+    legend_elements_availability = [
+        Line2D([0], [0], color='green', lw=2, label='Available (Green)'),
+        Line2D([0], [0], color='black', lw=2, label='Unavailable (Black)')
+    ]
+
+    # Combine the legend elements
+    combined_legend_elements = legend_elements_actions + legend_elements_availability
+
+    # Add the combined custom legend to one of the axes
+    ax1.legend(handles=combined_legend_elements, loc='upper left', fontsize='small')
+
+    plt.subplots_adjust(right=1)  # Adjust the right margin to prevent overlap with the color bar
+    plt.title(f'Price and Battery Level Over Time for {algorithm}')
+    plt.tight_layout()
+    plt.savefig(f'images/price_battery_level_{algorithm}.png')
+
 
 def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     """
