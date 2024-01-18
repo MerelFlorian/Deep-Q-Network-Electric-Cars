@@ -7,7 +7,7 @@ from typing import Type, Tuple
 import sys
 from datetime import datetime
 from collections import defaultdict
-from data.data_vis import visualize_bat, plot_revenue, visualize_battery
+from data.data_vis import visualize_bat, plot_revenue
 
 # Constants
 NUM_EPISODES = 1 # Define the number of episodes for training
