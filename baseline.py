@@ -94,7 +94,7 @@ def ema(env: Env) -> EMA:
         EMA: The EMA agent.
     """
     # Create and return a new agent instance
-    return EMA(3, 12, env.max_battery)
+    return EMA(3, 7, env.max_battery)
 
 def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, bool]:
     """ Function to process the command line arguments.
