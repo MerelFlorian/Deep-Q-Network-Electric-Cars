@@ -34,7 +34,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         # Loop until the episode is done
         while not done:
             # Choose an action
-            action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
+            action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(_['step'] == 0), state)
             # Get datetime
             date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {int(state[1])-1:02d}:30:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
@@ -42,7 +42,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
                 log_env['battery'].append(state[0])
                 log_env['availability'].append(state[2])
                 log_env['action'].append(action)
-                log_env['price'].append(env.get_current_price())
+                log_env['price'].append(env.get_current_price(_['step'] == 0))
                 log_env['date'].append(date)                
             # Take a step
             state, reward, done, _ = env.step(action)
@@ -113,7 +113,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     elif sys.argv[1] == 'ema':
         return ema(env), False, "EMA"
     else: 
-        return "all", True
+        return "all", True, "All"
         
 # Initialize the environment
 env = ElectricCarEnv()
@@ -131,7 +131,7 @@ if test_agent == "all":
 
     # Validate BuyLowSellHigh Agent
     blsh_agent = buylowsellhigh(env)
-    blsh_performance, blsh_log_env = validate_agent(env, blsh_agent, rl)
+    blsh_performance, blsh_log_env = validate_agent(env, blsh_agent)
     print(f"Average reward on validation set for blsh: {blsh_performance}")
 
     # Validate EMA Agent
@@ -143,7 +143,6 @@ if test_agent == "all":
 
 else:
     test_performance, log_env = validate_agent(env, test_agent, rl)
-
-# Visualize the battery level
-visualize_bat(log_env, algorithm)
-print(f"Average reward on validation set: {test_performance}")
+    # Visualize the battery level
+    visualize_bat(log_env, algorithm)
+    print(f"Average reward on validation set: {test_performance}")

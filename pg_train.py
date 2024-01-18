@@ -1,8 +1,6 @@
 import torch.nn as nn
-import torch.nn.functional as F
 import torch
 import torch.optim as optim
-from torch.distributions import Categorical
 from gym import Env
 from ElectricCarEnv import ElectricCarEnv
 import random
@@ -62,7 +60,7 @@ def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
     return torch.tensor(returns)
 
 
-def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.6, epsilon=0.2, sequence_length=12):
+def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.99, epsilon=1, e_decay=0.995, sequence_length=12):
     """ Trains a policy network using the policy gradient algorithm.
 
     Args:
@@ -72,6 +70,8 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
         lr (float, optional): The learning rate. Defaults to 0.01.
         gamma (float, optional): The discount factor. Defaults to 0.99.
         epsilon (float, optional): The probability of taking a random action. Defaults to 0.1.
+        e_decay (float, optional): The decay rate of epsilon. Defaults to 0.995.
+        sequence_length (int, optional): The length of the state sequence. Defaults to 12.
     """
     # Initialize the optimizer
     optimizer = optim.Adam(policy_network.parameters(), lr=lr)
@@ -98,6 +98,8 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
                 # Take a random action
                 action = torch.tensor(np.array([env.action_space.sample()]))
                 use_policy = False
+                # Decay epsilon
+                epsilon *= e_decay
             else:
                 # Otherwise use the policy network to predict the next action
                 action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)

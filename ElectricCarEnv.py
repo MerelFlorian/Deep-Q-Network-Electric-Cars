@@ -33,7 +33,7 @@ class ElectricCarEnv(gym.Env):
 
         # Initialize the state
         self.current_step = 0
-        self.time_of_day = 1
+        self.time_of_day = 0
 
     def step(self, action: float) -> Tuple[np.ndarray, float, bool, dict]:
         """ Implements the step function for the environment.
@@ -54,9 +54,12 @@ class ElectricCarEnv(gym.Env):
             self.time_of_day = 1
             # Randomly decide if the car is available for the new day
             self.car_available = np.random.choice([0, 1])
-  
-        action = min(action, self.max_power) if action > 0 else max(action, -self.max_power)
-        
+
+        # Clip the action to the maximum power
+        min_action = min(action, -min(self.max_power, self.max_battery - self.battery_level))
+        max_action = min(action, min(self.max_power, self.battery_level))
+        action = np.clip(action, min_action, max_action)
+
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
             # Calculate the change in battery level
@@ -70,7 +73,6 @@ class ElectricCarEnv(gym.Env):
             reward = (action * price if action > 0 else 2 * action * price / 0.9) / 1000
         else:
             reward = 0
-
         # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
         if self.time_of_day == 19 and not self.car_available:
             self.battery_level = max(self.battery_level - 20, self.min_required_battery)
@@ -97,16 +99,22 @@ class ElectricCarEnv(gym.Env):
         # Start with a minimum battery level
         self.battery_level = self.min_required_battery
         # Reset the time of day and current step
-        self.time_of_day = 1
+        self.time_of_day = 0
         self.current_step = 0
         # Generate a random car availability
         self.car_available = np.random.choice([0, 1])
         # Initialize the state
-        self.state = np.array([self.battery_level, self.time_of_day, self.car_available])
+        self.state = np.array([self.battery_level, 1, self.car_available])
 
         return self.state
 
-    def get_current_price(self) -> float:
+    def get_current_price(self, first = False) -> float:
         """ Returns the current electricity price.
+
+        Args:
+            first (bool, optional): Whether to return the first price of the first day. Defaults to False.
+        
+        Returns:
+            float: The current electricity price.
         """
-        return self.data.iloc[self.current_step]["H" + str(self.time_of_day)]
+        return self.data.iloc[self.current_step]["H" + ("1" if first else str(self.time_of_day))]
