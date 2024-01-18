@@ -201,24 +201,17 @@ class BuyLowSellHigh:
       # Choose the action 
 
       # Buy in the morning
-      if 4 <= state[1] <= 5:
+      if 3 <= state[1] <= 6:
           # If it is a new day, buy one seventh of the max battery
-          self.action -= (self.max_battery - state[0]) / 2
+          self.action -= (self.max_battery - state[0]) / 4
           self.amount = self.action
           # Append the action to the history
-          self.buy = 2 * price
+          self.buy = 2 * price / 0.9
       # Sell in the evening
       elif 7 <= state[1] <= 20 and price >= self.buy:
           self.action = state[0]
           
       return self.action
-  
-class Sell:
-    def __init__(self):
-        self.max_battery = 50
-
-    def choose_action(self, state: list) -> float:
-        return state[0]
 
 class QNetwork(nn.Module):
     """

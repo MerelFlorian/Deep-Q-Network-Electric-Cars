@@ -34,15 +34,17 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         # Loop until the episode is done
         while not done:
             # Choose an action
-            action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(_['step'] == 0), state)
+            action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
             # Get datetime
-            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {int(state[1])-1:02d}:30:00", "%Y-%m-%d %H:%M:%S")
+            first = state[1] + _['step'] == 0
+            time = int(state[1]) if not first else 1
+            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {time-1:02d}:30:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
                 log_env['battery'].append(state[0])
                 log_env['availability'].append(state[2])
                 log_env['action'].append(action)
-                log_env['price'].append(env.get_current_price(_['step'] == 0))
+                log_env['price'].append(env.get_current_price())
                 log_env['date'].append(date)                
             # Take a step
             state, reward, done, _ = env.step(action)
