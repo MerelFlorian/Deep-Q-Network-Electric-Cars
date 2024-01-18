@@ -31,7 +31,7 @@ test_env.data = pd.read_csv('data/validate_clean.csv')
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop
-num_episodes = 1000
+num_episodes = 100
 total_rewards = []
 total_validation_rewards = []
 highest_reward = -np.inf
