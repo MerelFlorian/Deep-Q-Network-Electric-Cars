@@ -113,7 +113,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     elif sys.argv[1] == 'ema':
         return ema(env), False, "EMA"
     else: 
-        return "all", True
+        return "all", True, "all"
         
 # Initialize the environment
 env = ElectricCarEnv()
@@ -126,17 +126,17 @@ env.data = pd.read_csv('data/validate_clean.csv')
 if test_agent == "all":
     # Validate Q-Learning Agent
     q_agent = qlearning()
-    q_performance, ql_log_env = validate_agent(env, q_agent, rl)
+    q_performance, ql_log_env = validate_agent(env, q_agent, True)
     print(f"Average reward on validation set for q learning: {q_performance}")
 
     # Validate BuyLowSellHigh Agent
     blsh_agent = buylowsellhigh(env)
-    blsh_performance, blsh_log_env = validate_agent(env, blsh_agent, rl)
+    blsh_performance, blsh_log_env = validate_agent(env, blsh_agent, False)
     print(f"Average reward on validation set for blsh: {blsh_performance}")
 
     # Validate EMA Agent
     ema_agent = ema(env)
-    ema_performance, ema_log_env = validate_agent(env, ema_agent)
+    ema_performance, ema_log_env = validate_agent(env, ema_agent, False)
     print(f"Average reward on validation set for ema: {ema_performance}")
 
     plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
@@ -144,6 +144,6 @@ if test_agent == "all":
 else:
     test_performance, log_env = validate_agent(env, test_agent, rl)
 
-# Visualize the battery level
-visualize_bat(log_env, algorithm)
-print(f"Average reward on validation set: {test_performance}")
+    # Visualize the battery level
+    visualize_bat(log_env, algorithm)
+    print(f"Average reward on validation set: {test_performance}")
