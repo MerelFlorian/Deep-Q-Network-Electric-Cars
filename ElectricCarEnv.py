@@ -104,17 +104,17 @@ class ElectricCarEnv(gym.Env):
         # Generate a random car availability
         self.car_available = np.random.choice([0, 1])
         # Initialize the state
-        self.state = np.array([self.battery_level, 1, self.car_available])
+        self.state = np.array([self.battery_level, self.time_of_day, self.car_available])
 
         return self.state
 
-    def get_current_price(self, first = False) -> float:
+    def get_current_price(self) -> float:
         """ Returns the current electricity price.
 
-        Args:
-            first (bool, optional): Whether to return the first price of the first day. Defaults to False.
-        
         Returns:
             float: The current electricity price.
         """
-        return self.data.iloc[self.current_step]["H" + ("1" if first else str(self.time_of_day))]
+        if not (self.time_of_day + self.current_step):
+            return self.data.iloc[0]["H1"]
+        else:
+            return self.data.iloc[self.current_step]["H" + ("0" if not (self.time_of_day + self.current_step) else str(self.time_of_day))]

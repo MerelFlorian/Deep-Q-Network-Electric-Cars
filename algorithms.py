@@ -153,12 +153,12 @@ class EMA:
           self.ls_cross = 0
           self.sl_cross += 1
           if self.sl_cross > 1 and 3 <= state[1] <= 6:
-            self.action = -(self.max_battery - state[0])
+            self.action = -(self.max_battery - state[0]) / 8
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 6:
+          if self.ls_cross > 1:
               self.action = state[0]
       # Otherwise, do nothing
       else:
@@ -183,6 +183,7 @@ class BuyLowSellHigh:
       self.action = None
       self.history = np.array([])
       self.count = 0
+      self.buy = None
   
   def choose_action(self, price: float,  state: list) -> float:
       """ Chooses an action for the current time step.
@@ -201,24 +202,16 @@ class BuyLowSellHigh:
       # Choose the action 
 
       # Buy in the morning
-      if 4 <= state[1] <= 5:
+      if 3 <= state[1] <= 6:
           # If it is a new day, buy one seventh of the max battery
-          self.action -= (self.max_battery - state[0]) / 2
-          self.amount = self.action
+          self.action -= (self.max_battery - state[0]) / 8.2
           # Append the action to the history
-          self.buy = 2 * price
+          self.buy = price
       # Sell in the evening
-      elif 7 <= state[1] <= 20 and price >= self.buy:
+      elif self.buy and price >= self.buy:
           self.action = state[0]
           
       return self.action
-  
-class Sell:
-    def __init__(self):
-        self.max_battery = 50
-
-    def choose_action(self, state: list) -> float:
-        return state[0]
 
 class QNetwork(nn.Module):
     """
