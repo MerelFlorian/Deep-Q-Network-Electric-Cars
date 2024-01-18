@@ -10,7 +10,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.01, discount_factor=0.95, epsilon=1, epsilon_decay=0.995, min_epsilon=0, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.01, discount_factor=0.5, epsilon=1, epsilon_decay=0.995, min_epsilon=0, max_battery=50):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -181,8 +181,6 @@ class BuyLowSellHigh:
       # Parameters
       self.new_day = False
       self.action = None
-      self.history = np.array([])
-      self.count = 0
       self.buy = None
   
   def choose_action(self, price: float,  state: list) -> float:
@@ -195,8 +193,6 @@ class BuyLowSellHigh:
           float: The action to take in terms of kW to buy or sell.
       """
       # Reset the day boolean if it is a new day
-      if state[1] == 1:
-          self.new_day = True
       self.action = 0   
 
       # Choose the action 
