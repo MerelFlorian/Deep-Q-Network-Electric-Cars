@@ -276,7 +276,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     # Adding battery level with secondary axis
     ax2 = ax1.twinx()
     ax2.plot(df['date'], df['battery'], label='Battery Level', color='purple')
-    ax2.set_ylabel('Battery Level', color='purple')
+    ax2.set_ylabel('Battery Level (kWh)', color='purple')
     ax2.tick_params('y', colors='purple')
 
     # Create custom legend elements for actions
@@ -303,7 +303,11 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     # Add the combined custom legend to one of the axes
     ax1.legend(handles=combined_legend_elements, loc='upper left', fontsize='small')
 
-    plt.title(f'Price and Battery Level Over Time for {algorithm} [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]')
+    # Add title
+    # Main title
+    plt.title(f'Price and Battery Level Over Time for {algorithm}', color='black')
+    plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=10, style='italic')
+
     plt.tight_layout()
     plt.savefig(f'images/price_battery_level_{algorithm}.png')
 
@@ -330,14 +334,11 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     plt.legend()
     plt.grid(True)
     plt.savefig('images/cumulative_reward.png')
+
+
 if __name__ == "__main__":
     # Clean the data
     df = clean_data('data/train.csv')
-
-    # Compute the median across each hour of the dataset
-    df_mean = df.mean()
-    print(df_mean)
-
     # # Add date columns
     # df = add_date_columns(df)
     # # Save the DataFrame to a csv file

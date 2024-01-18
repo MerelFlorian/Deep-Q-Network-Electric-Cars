@@ -203,6 +203,7 @@ class BuyLowSellHigh:
           self.amount = self.action
           # Append the action to the history
           self.buy = 2 * price
+      # Sell in the evening
       elif 7 <= state[1] <= 20 and price >= self.buy:
           self.action = state[0]
           
