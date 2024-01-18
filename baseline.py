@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 from ElectricCarEnv import ElectricCarEnv
-from algorithms import QLearningAgent, BuyLowSellHigh, EMA
+from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgent
 from gym import Env
 from typing import Type, Tuple
 import sys
 from datetime import datetime
 from collections import defaultdict
-from data.data_vis import visualize_bat, plot_revenue
+from data.data_vis import visualize_bat, plot_revenue, visualize_battery
 
 # Constants
 NUM_EPISODES = 1 # Define the number of episodes for training
@@ -126,7 +126,7 @@ env.data = pd.read_csv('data/validate_clean.csv')
 if test_agent == "all":
     # Validate Q-Learning Agent
     q_agent = qlearning()
-    q_performance, ql_log_env = validate_agent(env, q_agent, rl)
+    q_performance, ql_log_env = validate_agent(env, q_agent, True)
     print(f"Average reward on validation set for q learning: {q_performance}")
 
     # Validate BuyLowSellHigh Agent
@@ -136,7 +136,7 @@ if test_agent == "all":
 
     # Validate EMA Agent
     ema_agent = ema(env)
-    ema_performance, ema_log_env = validate_agent(env, ema_agent)
+    ema_performance, ema_log_env = validate_agent(env, ema_agent, False)
     print(f"Average reward on validation set for ema: {ema_performance}")
 
     plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
