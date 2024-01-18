@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from ElectricCarEnv import ElectricCarEnv
-from algorithms import QLearningAgent, BuyLowSellHigh, EMA
+from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgent
 from gym import Env
 from typing import Type, Tuple
 import sys
