@@ -181,8 +181,6 @@ class BuyLowSellHigh:
       # Parameters
       self.new_day = False
       self.action = None
-      self.history = np.array([])
-      self.count = 0
       self.buy = None
   
   def choose_action(self, price: float,  state: list) -> float:
@@ -195,8 +193,6 @@ class BuyLowSellHigh:
           float: The action to take in terms of kW to buy or sell.
       """
       # Reset the day boolean if it is a new day
-      if state[1] == 1:
-          self.new_day = True
       self.action = 0   
 
       # Choose the action 
