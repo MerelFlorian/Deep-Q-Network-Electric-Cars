@@ -152,13 +152,13 @@ class EMA:
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 1 and 3 <= state[1] <= 6:
-            self.action = -(self.max_battery - state[0]) / 8
+          if self.sl_cross >= 1 and 3 <= state[1] <= 6:
+            self.action = -(self.max_battery - state[0]) / 8.2
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 1:
+          if self.ls_cross >= 1:
               self.action = state[0]
       # Otherwise, do nothing
       else:
