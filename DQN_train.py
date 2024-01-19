@@ -17,7 +17,7 @@ def objective(trial):
     activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
     action_size = trial.suggest_categorical("action_size", [100, 200, 500, 1000])
     state_size = 3
-    episodes = 1
+    episodes = 100
 
     activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
 
@@ -32,8 +32,8 @@ def objective(trial):
     # Train the agent and get validation reward
     validation_reward = train_DQN(env, agent, test_env, episodes, model_save_path=f"models/DQN/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
 
-    # Optuna aims to minimize the objective, so return the negative reward
-    return -validation_reward
+    # Optuna aims to maximize the objective
+    return validation_reward
 
 
 def train_DQN(env, agent, test_env, episodes, model_save_path):
@@ -98,13 +98,13 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
 
 if __name__ == "__main__":
 
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(direction="maximize")
     study.optimize(objective, n_trials=1)  
 
     print("Best trial:")
     trial = study.best_trial
 
-    print(f"Value: {-trial.value}")
+    print(f"Value: {trial.value}")
     print("Params: ")
     for key, value in trial.params.items():
         print(f"{key}: {value}")
