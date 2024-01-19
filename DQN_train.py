@@ -3,17 +3,49 @@ from ElectricCarEnv import ElectricCarEnv
 import pandas as pd
 from algorithms import DQNAgent
 import torch
+import optuna
+
+import optuna
+
+def objective(trial):
+    """
+    Function to optimize the hyperparameters of the DQN agent.
+    """
+    # Define the hyperparameter search space using the trial object
+    lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
+    gamma = trial.suggest_float("gamma", 0.8, 0.99)
+    activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
+    action_size = trial.suggest_categorical("action_size", [100, 200, 500, 1000])
+    state_size = 3
+    episodes = 1
+
+    activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
+
+    # Create the environment and agent
+    env = ElectricCarEnv()
+    agent = DQNAgent(state_size, action_size, learning_rate=lr, gamma=gamma, activation_fn=activation_fn)
+
+    # Create the validation environment
+    test_env = ElectricCarEnv()
+    test_env.data = pd.read_csv("data/validate_clean.csv")
+
+    # Train the agent and get validation reward
+    validation_reward = train_DQN(env, agent, test_env, episodes, model_save_path=f"models/DQN/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
+
+    # Optuna aims to minimize the objective, so return the negative reward
+    return -validation_reward
 
 
-def train_DQN(env, agent, test_env, test_agent, train_episodes=1, val_episodes=1):
+def train_DQN(env, agent, test_env, episodes, model_save_path):
     """
     Function to train the DQN agent.
     """
 
     total_train_rewards = []
     total_val_rewards = []
+    state_size = 3
 
-    for episode in range(train_episodes):
+    for episode in range(episodes):
         state = env.reset()
         done = False
         episode_rewards = []
@@ -33,20 +65,18 @@ def train_DQN(env, agent, test_env, test_agent, train_episodes=1, val_episodes=1
             state = next_state
             if done:
                 break
+
             if len(agent.memory) > agent.batch_size:
                 agent.replay()
             
         total_train_rewards.append(sum(episode_rewards))
 
-        print(f"Episode {episode + 1}/{train_episodes}: Total Reward: {sum(total_train_rewards) / train_episodes}")
-    
-    print(f"Training complete for model with lr:{lr}, gamma:{gamma}, activation_fn:{activation_fn}, action_size:{action_size}")
-    agent.save("models/DQN/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
+        print(f"Episode {episode + 1 / episodes}: Total Reward: {sum(total_train_rewards) / episodes}")
 
     # Validate the agent
     agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
 
-    for episode in range(1):
+    for episode in range(episodes):
         state = test_env.reset()
         val_episode_rewards = []
         done = False
@@ -59,51 +89,24 @@ def train_DQN(env, agent, test_env, test_agent, train_episodes=1, val_episodes=1
 
         total_val_rewards.append(sum(val_episode_rewards))
 
-    avg_train_reward = sum(total_train_rewards) / train_episodes
-    avg_val_reward = sum(total_val_rewards) / val_episodes
+    avg_train_reward = sum(total_train_rewards) / episodes
+    avg_val_reward = sum(total_val_rewards) / episodes
     print(f"Average Training Reward: {avg_train_reward}, Average Validation Reward: {avg_val_reward}")
+    agent.save(model_save_path)
  
     return avg_val_reward
 
 if __name__ == "__main__":
-    train_episodes = 1
-    val_episodes = 1
 
-    learning_rates = [0.01, 0.001, 0.0005, 0.0001]
-    discount_factors = [0.99, 0.95, 0.90, 0.5]
-    activation_functions = [torch.relu, torch.tanh]
-    action_sizes = [100, 200, 500, 1000] 
-    state_size = 3
+    study = optuna.create_study(direction="minimize")
+    study.optimize(objective, n_trials=1)  
+
+    print("Best trial:")
+    trial = study.best_trial
+
+    print(f"Value: {-trial.value}")
+    print("Params: ")
+    for key, value in trial.params.items():
+        print(f"{key}: {value}")
 
     
-    best_performance = -float('inf')
-    best_params = {}
-
-    for lr in learning_rates:
-        for gamma in discount_factors:
-            for activation_fn in activation_functions:
-                for action_size in action_sizes:
-
-                    # Initialize the environment and agent
-                    env = ElectricCarEnv()
-                    agent = DQNAgent(state_size, action_size, learning_rate=lr, gamma=gamma, activation_fn=activation_fn)
-                    
-                    # Initialize the validation environment and agent
-                    test_env = ElectricCarEnv()
-                    test_agent = DQNAgent(state_size, action_size)
-                    test_env.data = pd.read_csv("data/validate_clean.csv")
-
-                    # Train the agent
-                    total_reward = train_DQN(env, agent, test_env, test_agent, train_episodes, val_episodes)  
-
-                    # Log and evaluate performance
-                    if total_reward > best_performance:
-                        best_performance = total_reward
-                        best_params = {'lr': lr, 'gamma': gamma, 'activation_fn': activation_fn.__name__, 'action_size': action_size}
-
-    # Print the best parameters
-    print(f"Best Parameters: {best_params}")
-
-    agent = DQNAgent(state_size, action_size)
-    
-    train_DQN(env, agent)
