@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 from ElectricCarEnv import ElectricCarEnv
 from algorithms import DQNAgent
-from collections import defaultdict
-from datetime import datetime
 
 def validate_agent(env, agent, num_episodes=1):
     """

@@ -10,7 +10,7 @@ from collections import defaultdict
 from data.data_vis import visualize_bat, plot_revenue
 
 # Constants
-NUM_EPISODES = 1 # Define the number of episodes for training
+NUM_EPISODES = 20 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
