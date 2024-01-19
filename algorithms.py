@@ -152,13 +152,13 @@ class EMA:
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 1 and 3 <= state[1] <= 6:
-            self.action = -(self.max_battery - state[0]) / 8
+          if self.sl_cross >= 1 and 3 <= state[1] <= 6:
+            self.action = -(self.max_battery - state[0]) / 8.2
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 1:
+          if self.ls_cross >= 1:
               self.action = state[0]
       # Otherwise, do nothing
       else:
@@ -182,6 +182,8 @@ class BuyLowSellHigh:
       self.new_day = False
       self.action = None
       self.buy = None
+      self.counter = 0
+      self.s_counter = 0
   
   def choose_action(self, price: float,  state: list) -> float:
       """ Chooses an action for the current time step.
@@ -205,7 +207,14 @@ class BuyLowSellHigh:
           self.buy = price
       # Sell in the evening
       elif self.buy and price >= self.buy:
-          self.action = state[0]
+          if state[2]:
+              self.counter += 1
+              if self.counter > 4:
+                  self.action = state[0]
+                  if state[0] - (25 / 0.9) < 1:
+                      self.counter = 0
+          else:
+              self.action = state[0]
           
       return self.action
   
