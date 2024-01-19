@@ -208,36 +208,38 @@ class BuyLowSellHigh:
           self.action = state[0]
           
       return self.action
-
+  
 class QNetwork(nn.Module):
-    """
-    This class represents the neural network used to approximate the Q-function.
-    """
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, activation_fn=torch.relu):
         super(QNetwork, self).__init__()
         self.fc1 = nn.Linear(state_size, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, action_size)
+        self.activation_fn = activation_fn
 
     def forward(self, state):
-        x = torch.relu(self.fc1(state))
-        x = torch.relu(self.fc2(x))
+        x = self.activation_fn(self.fc1(state))
+        x = self.activation_fn(self.fc2(x))
         return self.fc3(x)
+
 
 class DQNAgent:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, learning_rate=0.001, gamma=0.5, activation_fn=torch.relu):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=10000)
-        self.gamma = 0.95  # discount factor
+        self.gamma = gamma  # discount factor
+        self.learning_rate = learning_rate
+        self.model = QNetwork(state_size, action_size, activation_fn)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.batch_size = 64
-        self.learning_rate = 0.001
+
 
         self.model = QNetwork(state_size, action_size)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
@@ -248,7 +250,7 @@ class DQNAgent:
         """
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state):
+    def choose_action(self, state):
         """Returns actions for given state as per current policy."""
         state_vector = [state[0] / 50, state[1] / 24, state[2]]  # Assuming state is a list or array
         state_tensor = torch.FloatTensor(state_vector).unsqueeze(0)
