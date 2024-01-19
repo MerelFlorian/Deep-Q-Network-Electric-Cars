@@ -54,10 +54,12 @@ class ElectricCarEnv(gym.Env):
             self.time_of_day = 1
             # Randomly decide if the car is available for the new day
             self.car_available = np.random.choice([0, 1])
-        # Clip the action to the maximum power
-        min_action = min(action, -min(self.max_power, self.max_battery - self.battery_level))
-        max_action = min(action, min(self.max_power, self.battery_level))
+
+        # Clip the action value to the minimum/maximum power
+        min_action = max(action, -min(self.max_power, self.max_battery - self.battery_level))
+        max_action = min(action / self.efficiency, min(self.max_power / self.efficiency, self.battery_level * self.efficiency))
         action = np.clip(action, min_action, max_action)
+
         # From 8AM to 6PM, unavailable cars can't be charged
         if not (8 <= self.time_of_day <= 18 and not self.car_available):
             # Calculate the change in battery level
@@ -71,7 +73,6 @@ class ElectricCarEnv(gym.Env):
             reward = (action * price if action > 0 else 2 * action * price / 0.9) / 1000
         else:
             reward = 0
-
         # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
         if self.time_of_day == 19 and not self.car_available:
             self.battery_level = max(self.battery_level - 20, self.min_required_battery)

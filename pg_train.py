@@ -96,7 +96,7 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
             # Policy network forward pass
             if random.random() < epsilon:
                 # Take a random action
-                action = torch.tensor(np.array([env.action_space.sample()]))
+                action = torch.from_numpy(np.array([env.action_space.sample()]))
                 use_policy = False
                 # Decay epsilon
                 epsilon *= e_decay
