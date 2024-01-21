@@ -4,8 +4,8 @@ import pandas as pd
 from algorithms import DQNAgent
 import torch
 import optuna
+import os, csv
 
-import optuna
 
 def objective(trial):
     """
@@ -17,7 +17,7 @@ def objective(trial):
     activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
     action_size = trial.suggest_categorical("action_size", [100, 200, 500, 1000])
     state_size = 3
-    episodes = 100
+    episodes = 10
 
     activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
 
@@ -31,6 +31,17 @@ def objective(trial):
 
     # Train the agent and get validation reward
     validation_reward = train_DQN(env, agent, test_env, episodes, model_save_path=f"models/DQN/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
+
+    # Write trial results to CSV
+    if not os.path.exists('hyperparameter_tuning_results_DQN.csv'):
+        with open('hyperparameter_tuning_results.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Activation Function', 'Action Size', 'Validation Reward'])
+
+    fields = [trial.number, lr, gamma, activation_fn_name, action_size, validation_reward]
+    with open('hyperparameter_tuning_results_DQN.csv', 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(fields)
 
     # Optuna aims to maximize the objective
     return validation_reward
@@ -71,7 +82,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
             
         total_train_rewards.append(sum(episode_rewards))
 
-        print(f"Episode {episode + 1 / episodes}: Total Reward: {sum(total_train_rewards) / episodes}")
+        print(f"Episode {episode + 1}: Total Reward: {sum(total_train_rewards) / episodes}")
 
     # Validate the agent
     agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
@@ -92,6 +103,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
     avg_train_reward = sum(total_train_rewards) / episodes
     avg_val_reward = sum(total_val_rewards) / episodes
     print(f"Average Training Reward: {avg_train_reward}, Average Validation Reward: {avg_val_reward}")
+    
     agent.save(model_save_path)
  
     return avg_val_reward
@@ -99,7 +111,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=1)  
+    study.optimize(objective, n_trials=50)  
 
     print("Best trial:")
     trial = study.best_trial
