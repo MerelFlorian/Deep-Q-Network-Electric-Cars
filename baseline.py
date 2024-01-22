@@ -12,13 +12,12 @@ from data.data_vis import visualize_bat, plot_revenue
 # Constants
 NUM_EPISODES = 20 # Define the number of episodes for training
 
-def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
+def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA]) -> None:
     """ Function to validate the agent on a validation set.
 
     Args:
         env (Type[Env]): The environment to validate the agent on.
         agent (Type[QLearningAgent | BuyLowSellHigh | EMA]): The agent to validate.
-        rl (bool, optional): Whether the agent is a reinforcement learning agent. Defaults to False.
     """
     # Initialize the total reward
     total_rewards = np.array([])
@@ -34,7 +33,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         # Loop until the episode is done
         while not done:
             # Choose an action
-            action = agent.choose_action(state) if rl else agent.choose_action(env.get_current_price(), state)
+            action = agent.choose_action(state)
             # Get datetime
             first = state[1] + _['step'] == 0
             time = int(state[1]) if not first else 1
@@ -72,7 +71,7 @@ def qlearning() -> QLearningAgent:
     # Return the agent
     return test_agent
 
-def buylowsellhigh(env: Env) -> BuyLowSellHigh:
+def buylowsellhigh() -> BuyLowSellHigh:
     """ Function to initialize a BuyLowSellHigh agent.
 
     Args:
@@ -82,58 +81,55 @@ def buylowsellhigh(env: Env) -> BuyLowSellHigh:
         BuyLowSellHigh: The BuyLowSellHigh agent.
     """
     # Create and return a new agent instance
-    return BuyLowSellHigh(env.max_battery)
+    return BuyLowSellHigh(50)
 
-def ema(env: Env) -> EMA:
+def ema() -> EMA:
     """ Function to initialize an EMA agent.
-
-    Args:
-        env (Env): The environment to initialize the agent on.
 
     Returns:
         EMA: The EMA agent.
     """
     # Create and return a new agent instance
-    return EMA(3, 7, env.max_battery)
+    return EMA(3, 7, 50)
 
-def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, bool]:
+def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, str]:
     """ Function to process the command line arguments.
 
     Args:
         env (Env): The environment to initialize the agent on.
 
     Returns:
-        Tuple[QLearningAgent | BuyLowSellHigh | EMA, bool]: The agent and whether it is a reinforcement learning agent.
+        Tuple[QLearningAgent | BuyLowSellHigh | EMA, str]: The agent and the algorithm name.
     """
     if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "all"]:
         print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema')
         exit()
     if sys.argv[1] == 'qlearning':
-        return qlearning(), True, 'Q-learning'
+        return qlearning(), 'Q-learning'
     elif sys.argv[1] == 'blsh':
-        return buylowsellhigh(env), False, 'BLSH'
+        return buylowsellhigh(), 'BLSH'
     elif sys.argv[1] == 'ema':
-        return ema(env), False, "EMA"
+        return ema(), "EMA"
     elif sys.argv[1] =="DQN":
         state_size = 3  
         action_size = 5000 
         test_agent = DQNAgent(state_size, action_size)
         test_agent.model = np.load('models/dqn_model.pth')
-        return test_agent, True, "DQN"
+        return test_agent, "DQN"
 
     else: 
-        return "all", True, "All"
+        return "all", "All"
         
 # Initialize the environment
 env = Electric_Car("data/validate.xlsx")
 # Initialize the agent
-test_agent, rl, algorithm = process_command(env)
+test_agent, algorithm = process_command(env)
 
 # Test the agent
 if test_agent == "all":
     # Validate Q-Learning Agent
     q_agent = qlearning()
-    q_performance, ql_log_env = validate_agent(env, q_agent, True)
+    q_performance, ql_log_env = validate_agent(env, q_agent)
     print(f"Average reward on validation set for q learning: {q_performance}")
 
     # Validate BuyLowSellHigh Agent
@@ -142,14 +138,14 @@ if test_agent == "all":
     print(f"Average reward on validation set for blsh: {blsh_performance}")
 
     # Validate EMA Agent
-    ema_agent = ema(env)
-    ema_performance, ema_log_env = validate_agent(env, ema_agent, False)
+    ema_agent = ema()
+    ema_performance, ema_log_env = validate_agent(env, ema_agent)
     print(f"Average reward on validation set for ema: {ema_performance}")
 
     plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
 
 else:
-    test_performance, log_env = validate_agent(env, test_agent, rl)
+    test_performance, log_env = validate_agent(env, test_agent)
     # Visualize the battery level
     visualize_bat(log_env, algorithm)
     print(f"Average reward on validation set: {test_performance}")
