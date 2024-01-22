@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ElectricCarEnv import ElectricCarEnv
+from ElectricCarEnv import Electric_Car
 from algorithms import DQNAgent
 
 def validate_agent(env, agent, num_episodes=1):
