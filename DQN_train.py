@@ -30,16 +30,16 @@ def objective(trial):
     test_env.data = pd.read_csv("data/validate_clean.csv")
 
     # Train the agent and get validation reward
-    validation_reward = train_DQN(env, agent, test_env, episodes, model_save_path=f"models/DQN/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
+    validation_reward = train_DQN(env, agent, test_env, episodes, model_save_path=f"models/DQN_version_2/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
 
     # Write trial results to CSV
-    if not os.path.exists('hyperparameter_tuning_results_DQN.csv'):
+    if not os.path.exists('hyperparameter_tuning_results_DQN_version2.csv'):
         with open('hyperparameter_tuning_results.csv', 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Activation Function', 'Action Size', 'Validation Reward'])
 
     fields = [trial.number, lr, gamma, activation_fn_name, action_size, validation_reward]
-    with open('hyperparameter_tuning_results_DQN.csv', 'a', newline='') as f:
+    with open('hyperparameter_tuning_results_DQN_version2.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
 
@@ -111,7 +111,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=50)  
+    study.optimize(objective, n_trials=10)  
 
     print("Best trial:")
     trial = study.best_trial
