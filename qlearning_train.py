@@ -19,7 +19,7 @@ def validate_agent(test_env, test_agent, qtable):
 
     return total_rewards
   
-# Environment and Agent Initialization
+# Environment and Agent InitializationQnew​(state,action)=Q(state,action)+lr×(reward+γ×maxa​Q(next_state,all_actions)−Q(state,action))
 env = ElectricCarEnv()
 state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
 action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)
