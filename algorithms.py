@@ -128,18 +128,18 @@ class EMA:
       """
       return abs((self.short_ema - self.long_ema)) / self.long_ema
 
-  def choose_action(self, price: float, state: list) -> float:
+  def choose_action(self, state: list) -> float:
       """ Chooses an action for the current time step.
 
       Args:
-          price (float): The price of the asset for the current time step.
+          state (list): The current state of the environment.
 
       Returns:
           float: The action to take in terms of kW to buy or sell.
       """
       # Update the EMAs
-      self.short_ema = self.calculate_ema(price, self.len_short, self.short_ema_history)
-      self.long_ema = self.calculate_ema(price, self.len_long, self.long_ema_history)
+      self.short_ema = self.calculate_ema(state[1], self.len_short, self.short_ema_history)
+      self.long_ema = self.calculate_ema(state[1], self.len_long, self.long_ema_history)
 
       # Append the EMAs to the history
       self.short_ema_history = np.append(self.short_ema_history, self.short_ema)
@@ -147,13 +147,13 @@ class EMA:
       
       # Choose the action
       # If the long EMA has not been calculated yet buy the max amount possible
-      if len(self.long_ema_history) < self.len_long and state[1] == 4:
+      if len(self.long_ema_history) < self.len_long and state[2] == 4:
           self.action = -(self.max_battery - state[0])
       # If the short EMA is below the long EMA, buy
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross >= 1 and 3 <= state[1] <= 6:
+          if self.sl_cross >= 1 and 3 <= state[2] <= 6:
             self.action = -(self.max_battery - state[0]) / 8.2
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
@@ -201,14 +201,14 @@ class BuyLowSellHigh:
       # Choose the action 
 
       # Buy in the morning
-      if 3 <= state[1] <= 6:
+      if 3 <= state[2] <= 6:
           # If it is a new day, buy one seventh of the max battery
           self.action -= (self.max_battery - state[0]) / 8.2
           # Append the action to the history
           self.buy = price
       # Sell in the evening
       elif self.buy and price >= self.buy:
-          if state[2]:
+          if state[3]:
               self.counter += 1
               if self.counter > 4:
                   self.action = state[0]

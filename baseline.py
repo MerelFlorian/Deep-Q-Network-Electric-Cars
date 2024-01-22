@@ -125,7 +125,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         return "all", True, "All"
         
 # Initialize the environment
-env = Electric_Car("data/validate_clean.csv")
+env = Electric_Car("data/validate.xlsx")
 # Initialize the agent
 test_agent, rl, algorithm = process_command(env)
 

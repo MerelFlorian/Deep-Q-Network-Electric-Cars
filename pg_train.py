@@ -90,12 +90,13 @@ def objective(trial: optuna.Trial) -> float:
     return -total_reward
 
 
-def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes = 7, lr = 0.0007, gamma = 0, 
+def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNetwork, episodes = 7, lr = 0.0007, gamma = 0, 
                           noise_std = 0.1, noise_decay = 0.9, sequence_length=7, clipping = 4, save = False):
     """ Trains a policy network using the policy gradient algorithm.
 
     Args:
         env (Env): The environment to train on.
+        val_env (Env): The environment to validate on.
         policy_network (PolicyNetwork): The policy network to train.
         episodes (int, optional): The number of episodes to train for. Defaults to 10.
         lr (float, optional): The learning rate. Defaults to 0.0007.
@@ -167,8 +168,7 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
 
         # Validate the model
         with torch.no_grad():
-            env2 = Electric_Car("data/validate_clean.csv")
-            state = env.reset()
+            state = val_env.reset()
             done = False
             total_reward = 0
             while not done:
@@ -176,7 +176,7 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
                 action_mean, action_std, hidden_state = policy_network(state, hidden_state)
                 normal_dist = torch.distributions.Normal(action_mean, action_std)
                 action = normal_dist.sample()
-                next_state, reward, done, _ = env.step(action.item())
+                next_state, reward, done, _ = val_env.step(action.item())
                 total_reward += reward
                 state = next_state
 
@@ -195,7 +195,9 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
     return best_reward
 
 if __name__ == "__main__":
-    env = Electric_Car("data/train_clean.csv")
+    # Create the environments
+    env = Electric_Car("data/train.xlsx")
+    val_env = Electric_Car("data/validate.xlsx")
 
     if sys.argv[1] == 'tune':
         study = optuna.create_study()  # Create a study object
@@ -211,7 +213,7 @@ if __name__ == "__main__":
         # Create a new model with the best hyperparameters
         policy_network = LSTM_PolicyNetwork(env.observation_space.shape[0], env.action_space.shape[0], 48, 3)
         # Load the best model weights
-        train_policy_gradient(env, policy_network, episodes=5, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
+        train_policy_gradient(env, val_env, policy_network, episodes=5, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
     else:
         print('Invalid command line argument. Please use one of the following: tune, train')
         exit()
