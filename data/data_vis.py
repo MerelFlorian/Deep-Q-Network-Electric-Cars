@@ -10,10 +10,6 @@ from matplotlib.lines import Line2D
 from matplotlib.colors import Normalize, LinearSegmentedColormap
 import datetime 
 from matplotlib.patches import Patch
-import statsmodels.api as sm
-from statsmodels.formula.api import ols
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-import seaborn as sns
 import scipy.stats as stats
 import scikit_posthocs as sp
 
@@ -31,7 +27,7 @@ def clean_data(csv_file: str) -> pd.DataFrame:
     """
 
     # Import data as pandas dataframe
-    df = pd.read_csv(csv_file)
+    df = pd.read_excel(csv_file)
     # Remove all columns after 24th column
     df = df.iloc[:, :25]
     # Remove all rows with NaN values
@@ -116,6 +112,7 @@ def candlestick_format(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
                     'value': row[f'H{i}']}
             hours.append(hour)
     reshaped_df = pd.DataFrame(hours)
+    print(reshaped_df.head())
     reshaped_df.set_index('datetime', inplace=True)
 
     # Resampling based on the chosen timeframe
@@ -140,19 +137,33 @@ def calculate_ema(ohlc: pd.DataFrame, span: int) -> pd.Series:
     """
     return ohlc['open'].ewm(span=span, adjust=False).mean()
 
-def candlestick(ohlc: pd.DataFrame, description: str) -> None:
-    """Plot a candlestick chart of prices with EMAs. Can be used for different time frames.
+def candlestick(ohlcs: list, descriptions: list) -> None:
+    """
+    Plot candlestick charts of prices with shared x-axes for different dataframes.
 
     Args:
-        ohlc (pd.DataFrame): DataFrame in OHLC format
-        description (str): Short description of the chart
-        ema_spans (list[int]): List of spans for EMA calculation
+        ohlcs (list of pd.DataFrame): List of DataFrames in OHLC format
+        descriptions (list of str): List of short descriptions for each chart
     """
-    # Ensure the index is a DatetimeIndex
-    ohlc.index = pd.DatetimeIndex(ohlc.index)
 
-    # Plot candlestick chart
-    mpf.plot(ohlc, type='candle', style='charles', title=f'Candlestick Chart {description}', savefig=f'../images/candlestick_{description}.png')
+    # Create a figure and a list of axes
+    fig, axes = plt.subplots(len(ohlcs), 1, figsize=(10, 5 * len(ohlcs)), sharex=True)
+
+    # If only one OHLC DataFrame is provided, wrap it in a list
+    if len(ohlcs) == 1:
+        ohlcs = [ohlcs]
+        axes = [axes]
+
+    for ohlc, ax, description in zip(ohlcs, axes, descriptions):
+        # Ensure the index is a DatetimeIndex
+        ohlc.index = pd.DatetimeIndex(ohlc.index)
+
+        # Plot candlestick chart on the current axis
+        mpf.plot(ohlc, type='candle', style='charles', ax=ax, title=f'Candlestick Chart {description}')
+
+    # Adjust layout and save the figure
+    plt.tight_layout()
+    plt.savefig('../images/combined_candlestick_charts.png')
 
 def action_to_color(action)-> None:
     """
@@ -518,48 +529,6 @@ def table_summary(df: pd.DataFrame) -> None:
     # Save the table to a csv file
     df_table.to_csv('../data/summary_statistics.csv')
 
-    
 
-if __name__ == "__main__":
-    # Clean the data
-    df = clean_data('train_clean.csv')
-    
-    # Make pandas dataframe 
-    df = pd.DataFrame(df)
-    # # Add columns to clip to 200
-    # columns_to_clip = [f'H{i}' for i in range(1, 25)]  # List of columns H1, H2, ..., H24
-
-    # # Applying clip to each of these columns
-    # for col in columns_to_clip:
-    #     df[col] = df[col].clip(upper=200)
-    
-     # # # Make a plot for each year
-    # # for y in [2007,  2008, 2009]:
-    # #     # Get candlestick dataset for each year
-    # #     df_year = df_candle[df_candle['date'].dt.year == y]
-    # #     # Convert dataset to candlestick chart format
-    # #     ohlc_year = candlestick_format(df_year)
-    # #     # Make dataframe for candlestick chart and save 
-    # #     candlestick(ohlc_year, str(y))
-
-    # # Select the first two weeks of 2007
-    # start_date = '2007-02-01'
-    # end_date = '2007-02-14'
-    # df_2007_first_week = df_candle[(df_candle['date'] >= start_date) & (df_candle['date'] <= end_date)]
-
-    # frame = "hourly"
-    
-    # for y in [2007,  2008, 2009]:
-    #     df_c = df[df['date'].dt.year == y]
-    #     print(df_c.head())
-    #     print(frame)
         
-    #     # Convert dataset to candlestick chart format
-    #     ohlc = candlestick_format(df_c, frame)
 
-    #     # Make dataframe for hourly candlestick chart and save 
-    #     candlestick(ohlc, f'{y}_{frame}_clipped')  # Adding 12-hour and 26-hour EMAs
-        
-    hourly_patterns(df)
-    daily_patterns(df)
-    monthly_patterns(df)
