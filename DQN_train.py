@@ -13,9 +13,9 @@ def objective(trial):
     """
     # Define the hyperparameter search space using the trial object
     lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
-    gamma = trial.suggest_float("gamma", 0.8, 0.99)
+    gamma = trial.suggest_float("gamma", 0.5, 0.99)
     activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
-    action_size = trial.suggest_categorical("action_size", [100, 200, 500, 1000])
+    action_size = trial.suggest_categorical("action_size", [100, 200, 500])
     state_size = 3
     episodes = 10
 
@@ -33,7 +33,7 @@ def objective(trial):
 
     # Write trial results to CSV
     if not os.path.exists('hyperparameter_tuning_results_DQN_version2.csv'):
-        with open('hyperparameter_tuning_results.csv', 'w', newline='') as f:
+        with open('hyperparameter_tuning_results_version2.csv', 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Activation Function', 'Action Size', 'Validation Reward'])
 
@@ -81,7 +81,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
             
         total_train_rewards.append(sum(episode_rewards))
 
-        print(f"Episode {episode + 1}: Total Reward: {sum(total_train_rewards) / episodes}")
+        print(f"Episode {episode + 1}: Total Reward: {sum(episode_rewards)}")
 
     # Validate the agent
     agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
