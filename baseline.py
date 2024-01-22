@@ -8,9 +8,10 @@ import sys
 from datetime import datetime
 from collections import defaultdict
 from data.data_vis import visualize_bat, plot_revenue
+from utils import clip
 
 # Constants
-NUM_EPISODES = 20 # Define the number of episodes for training
+NUM_EPISODES = 1 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA]) -> None:
     """ Function to validate the agent on a validation set.
@@ -29,27 +30,27 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         done = False
         log_env = defaultdict(list)
         # Initialize step to 0
-        _ = {'step': 0}
+        # _ = {'step': 0}
         # Loop until the episode is done
         while not done:
             # Choose an action
-            action = agent.choose_action(state)
+            action = clip(agent.choose_action(state), state)
             # Get datetime
-            first = state[1] + _['step'] == 0
-            time = int(state[1]) if not first else 1
-            date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {time-1:02d}:30:00", "%Y-%m-%d %H:%M:%S")
+            # first = state[1] + _['step'] == 0
+            # time = int(state[1]) if not first else 1
+            # date = datetime.strptime(f"{env.data.iloc[_['step']]['date']} {time-1:02d}:30:00", "%Y-%m-%d %H:%M:%S")
             # Log current state and action if last episode
-            if episode == NUM_EPISODES - 1:
-                log_env['battery'].append(state[0])
-                log_env['availability'].append(state[2])
-                log_env['action'].append(action)
-                log_env['price'].append(env.get_current_price())
-                log_env['date'].append(date)                
+            # if episode == NUM_EPISODES - 1:
+            #     log_env['battery'].append(state[0])
+            #     log_env['availability'].append(state[2])
+            #     log_env['action'].append(action)
+            #     log_env['price'].append(env.get_current_price())
+            #     log_env['date'].append(date)                
             # Take a step
-            state, reward, done, _ = env.step(action)
+            state, reward, done, _, _ = env.step(action)
             # Update the total reward
             total_reward += reward
-            log_env['revenue'].append(total_reward)
+            # log_env['revenue'].append(total_reward)
         total_rewards = np.append(total_rewards, total_reward)
     # Compute and return the average reward
     return np.mean(total_rewards), log_env
@@ -142,10 +143,10 @@ if test_agent == "all":
     ema_performance, ema_log_env = validate_agent(env, ema_agent)
     print(f"Average reward on validation set for ema: {ema_performance}")
 
-    plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
+    # plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
 
 else:
     test_performance, log_env = validate_agent(env, test_agent)
     # Visualize the battery level
-    visualize_bat(log_env, algorithm)
+    # visualize_bat(log_env, algorithm)
     print(f"Average reward on validation set: {test_performance}")

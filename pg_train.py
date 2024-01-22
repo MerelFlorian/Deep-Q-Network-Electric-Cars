@@ -139,7 +139,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
             action = sampled_action + noise
             log_prob = normal_dist.log_prob(action).sum(axis=-1)  # Sum needed if action space is multi-dimensional
 
-            next_state, reward, done, _ = env.step(action.item())
+            next_state, reward, done, _, _ = env.step(action.item())
             rewards.append(reward)
             log_probs.append(log_prob)
 
@@ -176,7 +176,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 action_mean, action_std, hidden_state = policy_network(state, hidden_state)
                 normal_dist = torch.distributions.Normal(action_mean, action_std)
                 action = normal_dist.sample()
-                next_state, reward, done, _ = val_env.step(action.item())
+                next_state, reward, done, _, _ = val_env.step(action.item())
                 total_reward += reward
                 state = next_state
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
             print(f"    {key}: {value}")
     elif sys.argv[1] == 'train':
         # Create a new model with the best hyperparameters
-        policy_network = LSTM_PolicyNetwork(env.observation_space.shape[0], env.action_space.shape[0], 48, 3)
+        policy_network = LSTM_PolicyNetwork(8, 1, 48, 3)
         # Load the best model weights
         train_policy_gradient(env, val_env, policy_network, episodes=5, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
     else:
