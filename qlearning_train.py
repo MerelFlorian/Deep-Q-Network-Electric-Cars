@@ -1,5 +1,5 @@
 import numpy as np
-from ElectricCarEnv import ElectricCarEnv
+from ElectricCarEnv import Electric_Car
 from algorithms import QLearningAgent
 import matplotlib.pyplot as plt
 import pandas as pd

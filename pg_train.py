@@ -2,12 +2,15 @@ import torch.nn as nn
 import torch
 import torch.optim as optim
 from gym import Env
-from ElectricCarEnv import ElectricCarEnv
+from ElectricCarEnv import Electric_Car
 import random
 import numpy as np
+import optuna
+import pandas as pd
+import sys
 
 class LSTM_PolicyNetwork(nn.Module):
-    def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=2):
+    def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
         super(LSTM_PolicyNetwork, self).__init__()
         self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
         self.fc_mean = nn.Linear(hidden_size, action_size)
@@ -59,28 +62,58 @@ def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
         returns.insert(0, R)
     return torch.tensor(returns)
 
+def objective(trial: optuna.Trial) -> float:
+    """ The objective function for the Optuna hyperparameter optimization.
 
-def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes=10, lr=0.0001, gamma=0.99, epsilon=1, e_decay=0.995, sequence_length=12):
+    Args:
+        env (Env): The environment to train on.
+        trial (optuna.Trial): The trial object.
+
+    Returns:
+        float: The evaluation metric.
+    """
+    # Define the hyperparameters using the trial object
+    lr = trial.suggest_loguniform('lr', 1e-5, 9e-3)
+    gamma = trial.suggest_float('gamma', 0.01, 0.6)
+    noise = trial.suggest_float('noise_std', 0.01, 25)
+    noise_decay = trial.suggest_float('noise_decay', 0.8, 1)
+    hidden_size = trial.suggest_categorical('hidden_size', [32, 48, 64, 128])
+    clipping = trial.suggest_int('clipping', 1, 10)
+    layers = trial.suggest_categorical('lstm_layers', [2, 3])
+    sequence_length = trial.suggest_int('sequence_length', 3, 48)
+
+    # Create a new model with these hyperparameters
+    policy_network = LSTM_PolicyNetwork(env.observation_space.shape[0], env.action_space.shape[0], hidden_size, layers)
+
+    # Train the model and return the evaluation metric
+    total_reward = train_policy_gradient(env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
+    return -total_reward
+
+
+def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes = 7, lr = 0.0007, gamma = 0, 
+                          noise_std = 0.1, noise_decay = 0.9, sequence_length=7, clipping = 4, save = False):
     """ Trains a policy network using the policy gradient algorithm.
 
     Args:
         env (Env): The environment to train on.
         policy_network (PolicyNetwork): The policy network to train.
         episodes (int, optional): The number of episodes to train for. Defaults to 10.
-        lr (float, optional): The learning rate. Defaults to 0.01.
-        gamma (float, optional): The discount factor. Defaults to 0.99.
-        epsilon (float, optional): The probability of taking a random action. Defaults to 0.1.
-        e_decay (float, optional): The decay rate of epsilon. Defaults to 0.995.
-        sequence_length (int, optional): The length of the state sequence. Defaults to 12.
+        lr (float, optional): The learning rate. Defaults to 0.0007.
+        gamma (float, optional): The discount factor. Defaults to 0.
+        noise_std (float, optional): The standard deviation of the Gaussian noise to add to the actions. Defaults to 0.1.
+        noise_decay (float, optional): The decay rate of the noise. Defaults to 0.99.
+        sequence_length (int, optional): The length of the sequence of states to use. Defaults to 7.
+        clipping (int, optional): The gradient clipping value. Defaults to 1.
+        save (bool, optional): Whether to save the model. Defaults to False.
     """
     # Initialize the optimizer
-    optimizer = optim.Adam(policy_network.parameters(), lr=lr)
+    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.0001)
     batch_size = 1  # Assuming we're dealing with single episodes
 
     for episode in range(episodes):
         # Reset the environment
         state = env.reset()
-        # Initialize the lists to store the states, rewards
+        # Initialize the lists to store the states, rewards and log probabilities
         states, rewards, log_probs = [], [], []
         hidden_state = policy_network.init_hidden(batch_size)
         done = False
@@ -94,25 +127,20 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
             state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
 
             # Policy network forward pass
-            if random.random() < epsilon:
-                # Take a random action
-                action = torch.from_numpy(np.array([env.action_space.sample()]))
-                use_policy = False
-                # Decay epsilon
-                epsilon *= e_decay
-            else:
-                # Otherwise use the policy network to predict the next action
-                action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
-                normal_dist = torch.distributions.Normal(action_mean, action_std)
-                action = normal_dist.sample()
-                log_prob = normal_dist.log_prob(action).sum(axis=-1)  # Sum needed if action space is multi-dimensional
-                use_policy = True
+            # Otherwise use the policy network to predict the next action
+            action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
+            normal_dist = torch.distributions.Normal(action_mean, action_std)
+            # Sample an action from the normal distribution
+            sampled_action = normal_dist.sample()
+            # Generate noise to encourage exploration
+            noise = np.random.normal(0, noise_std, size=sampled_action.shape)
+            # Add the noise to the action
+            action = sampled_action + noise
+            log_prob = normal_dist.log_prob(action).sum(axis=-1)  # Sum needed if action space is multi-dimensional
 
             next_state, reward, done, _ = env.step(action.item())
             rewards.append(reward)
-
-            if use_policy:
-                log_probs.append(log_prob)
+            log_probs.append(log_prob)
 
             state = next_state
 
@@ -126,13 +154,66 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
         optimizer.zero_grad()
         policy_loss = torch.stack(policy_gradient).sum()
         policy_loss.backward()
+
+        # Gradient Clipping
+        torch.nn.utils.clip_grad_norm_(policy_network.parameters(), clipping)
+
         optimizer.step()
 
-        print(f"Episode {episode + 1}/{episodes}: Total Reward: {sum(rewards)}")
+        # Decay the noise
+        noise_std *= noise_decay
+
+        print(f"Episode {episode + 1}/{episodes}: Total training reward: {sum(rewards)}") 
+
+        # Validate the model
+        with torch.no_grad():
+            env2 = ElectricCarEnv()
+            # Load validation data into the environment
+            env2.data = pd.read_csv('data/validate_clean.csv') 
+            state = env.reset()
+            done = False
+            total_reward = 0
+            while not done:
+                state = torch.from_numpy(state).float().unsqueeze(0).unsqueeze(0)
+                action_mean, action_std, hidden_state = policy_network(state, hidden_state)
+                normal_dist = torch.distributions.Normal(action_mean, action_std)
+                action = normal_dist.sample()
+                next_state, reward, done, _ = env.step(action.item())
+                total_reward += reward
+                state = next_state
+
+            print(f"Validation reward: {total_reward}")
+
+            if save:
+                if episode == 0:
+                    best_reward = total_reward
+                else:
+                    if total_reward > best_reward:
+                        best_reward = total_reward
+                        if best_reward > 0:
+                            torch.save(policy_network.state_dict(), "models/pg.pth")
 
     print("Training complete")
+    return best_reward
 
 if __name__ == "__main__":
     env = ElectricCarEnv()
-    policy_network = LSTM_PolicyNetwork(env.observation_space.shape[0], env.action_space.shape[0])
-    train_policy_gradient(env, policy_network)
+
+    if sys.argv[1] == 'tune':
+        study = optuna.create_study()  # Create a study object
+        study.optimize(objective, n_trials=50)  # Optimize the objective over 50 trials
+
+        print("Best trial:")
+        trial = study.best_trial
+        print(f"  Value: {-trial.value}")
+        print("  Params: ")
+        for key, value in trial.params.items():
+            print(f"    {key}: {value}")
+    elif sys.argv[1] == 'train':
+        # Create a new model with the best hyperparameters
+        policy_network = LSTM_PolicyNetwork(env.observation_space.shape[0], env.action_space.shape[0], 48, 3)
+        # Load the best model weights
+        train_policy_gradient(env, policy_network, episodes=5, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
+    else:
+        print('Invalid command line argument. Please use one of the following: tune, train')
+        exit()

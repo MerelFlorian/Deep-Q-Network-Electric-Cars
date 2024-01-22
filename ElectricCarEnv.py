@@ -1,120 +1,110 @@
 import gym
-from typing import Tuple
 import numpy as np
 import pandas as pd
-from gym import spaces
 
-class ElectricCarEnv(gym.Env):
-    """ Implements the gym interface for the electric car trading problem.
-    """
-    def __init__(self) -> None:
-        """ Initializes the environment.
-        """
-        super(ElectricCarEnv, self).__init__()
 
-        # Constants:
-        # Battery capacity in kWh
-        self.max_battery = 50
-        # Minimum required battery level in kWh
-        self.min_required_battery = 20
-        # Efficiency of the battery for charging/discharging
-        self.efficiency = 0.9
-        # Maximum charging/discharging power in kW
-        self.max_power = 25
+class Electric_Car(gym.Env):
 
-        # State space: [current battery level, time of day, car availability]
-        self.observation_space = spaces.Box(low=np.array([0, 0, 0]), high=np.array([self.max_battery, 24, 1]), dtype=np.float32)
+    def __init__(self, path_to_test_data=str):
+        # Define a continuous action space, -1 to 1. (You can discretize this later!)
+        self.continuous_action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
+        # Define the test data
+        self.test_data = pd.read_excel(path_to_test_data)
+        self.price_values = self.test_data.iloc[:, 1:25].to_numpy()
+        self.timestamps = self.test_data['PRICES']
+        self.state = np.empty(7)
 
-        # Action space: amount of electricity to buy or sell (negative for selling)
-        self.action_space = spaces.Box(low=-self.max_power, high=self.max_power, dtype=np.float32)
+        # Battery characteristics
+        self.battery_capacity = 50                      # kWh
+        self.max_power = 25/0.9                         # kW
+        self.charge_efficiency = 0.9                    # -
+        self.discharge_efficiency = 0.9                 # -
+        self.battery_level = self.battery_capacity/2    # kWh (start at 50%)
+        self.minimum_morning_level = 20                 # kWh
+        self.car_use_consumption = 20                   # kWh
 
-        # Load electricity price data
-        self.data = pd.read_csv('data/train_clean.csv')
+        # Time Tracking
+        self.counter = 0
+        self.hour = 1
+        self.day = 1
+        self.car_is_available = True
 
-        # Initialize the state
-        self.current_step = 0
-        self.time_of_day = 0
+    def step(self, action):
 
-    def step(self, action: float) -> Tuple[np.ndarray, float, bool, dict]:
-        """ Implements the step function for the environment.
+        action = np.squeeze(action)      # Remove the extra dimension
 
-        Args:
-            action (float): The amount of electricity to buy or sell (negative for selling)
+        # Calculate if, at 7am and after the chosen action, the battery level will be below the minimum morning level:
+        if self.hour == 7:
+            if action > 0 and (self.battery_level < self.minimum_morning_level):
+                if (self.battery_level + action*self.max_power*self.charge_efficiency) < self.minimum_morning_level:     # If the chosen action will not charge the battery to 20kWh
+                    action = (self.minimum_morning_level - self.battery_level)/(self.max_power*self.charge_efficiency)  # Charge until 20kWh
+            elif action < 0:
+                if (self.battery_level + action*self.max_power) < self.minimum_morning_level:
+                    if self.battery_level < self.minimum_morning_level:                                                    # If the level was lower than 20kWh, charge until 20kWh
+                        action = (self.minimum_morning_level - self.battery_level)/(self.max_power*self.charge_efficiency) # Charge until 20kWh
+                    elif self.battery_level >= self.minimum_morning_level:                                                 # If the level was higher than 20kWh, discharge until 20kWh
+                        action = (self.minimum_morning_level - self.battery_level)/(self.max_power)                        # Discharge until 20kWh
+            elif action == 0:
+                if self.battery_level < self.minimum_morning_level:
+                    action = (self.minimum_morning_level - self.battery_level)/(self.max_power*self.charge_efficiency)
 
-        Returns:
-            Tuple[np.array, float, bool, dict]: The next state, the reward, whether the episode is done, and additional information
-        """
-        # Update the time
-        self.time_of_day += 1
-        # Check if the day is over
-        if self.time_of_day > 24:
-            # Update the current step
-            self.current_step += 1
-            # Reset the time of day to 1AM
-            self.time_of_day = 1
-            # Randomly decide if the car is available for the new day
-            self.car_available = np.random.choice([0, 1])
+        # There is a 50% chance that the car is unavailable from 8am to 6pm
+        if self.hour == 8:
+            self.car_is_available = np.random.choice([True, False])
+            if not self.car_is_available:
+                self.battery_level -= self.car_use_consumption
+        if self.hour == 18:
+            self.car_is_available = True
+        if not self.car_is_available:
+            action = 0
 
-        # Clip the action value to the minimum/maximum power
-        min_action = max(action, -min(self.max_power, self.max_battery - self.battery_level))
-        max_action = min(action / self.efficiency, min(self.max_power / self.efficiency, self.battery_level * self.efficiency))
-        action = np.clip(action, min_action, max_action)
+        # Calculate the costs and battery level when charging (action >0)
+        if (action >0) and (self.battery_level <= self.battery_capacity):
+            if (self.battery_level + action*self.max_power*self.charge_efficiency) > self.battery_capacity:
+                action = (self.battery_capacity - self.battery_level)/(self.max_power*self.charge_efficiency)
+            charged_electricity_kW = action * self.max_power
+            charged_electricity_costs = charged_electricity_kW * self.price_values[self.day-1][self.hour-1] * 2 * 1e-3
+            reward = -charged_electricity_costs
+            self.battery_level += charged_electricity_kW*self.charge_efficiency
 
-        # From 8AM to 6PM, unavailable cars can't be charged
-        if not (8 <= self.time_of_day <= 18 and not self.car_available):
-            # Calculate the change in battery level
-            energy_change = -(action / self.efficiency if action > 0 else action)
-            # Update the battery level based on the action and efficiency
-            self.battery_level = min(max(self.battery_level + energy_change, 0), self.max_battery)
+        # Calculate the profits and battery level when discharging (action <0)
+        elif (action < 0) and (self.battery_level >= 0):
+            if (self.battery_level + action*self.max_power) < 0:
+                action = -self.battery_level/(self.max_power)
+            discharged_electricity_kWh = action * self.max_power           # Negative discharge value
+            discharged_electricity_profits = abs(discharged_electricity_kWh) * self.discharge_efficiency * self.price_values[self.day-1][self.hour-1] * 1e-3
+            reward = discharged_electricity_profits
+            self.battery_level += discharged_electricity_kWh
+            # Some small numerical errors causing the battery level to be 1e-14 to 1e-17 under 0 :
+            if self.battery_level < 0:
+                self.battery_level = 0
 
-            # Calculate reward (profit from buying/selling electricity)
-            price = self.get_current_price()
-            #Note: - for action means buying, + for action means selling
-            reward = (action * price if action > 0 else 2 * action * price / 0.9) / 1000
         else:
             reward = 0
-        # After the car returns from 8AM-6PM, the battery level decreases by 20 kWh
-        if self.time_of_day == 19 and not self.car_available:
-            self.battery_level = max(self.battery_level - 20, self.min_required_battery)
 
-        # Check if the battery level is below the minimum required at 7 am
-        if self.time_of_day == 7 and self.battery_level < self.min_required_battery:
-            # Decrease the reward by the cost of charging the battery to the minimum required
-            reward -= (self.min_required_battery - self.battery_level) * 2 * price / 1000 / 0.9
-            self.battery_level = self.min_required_battery
+        self.counter += 1    # Increase the counter
+        self.hour += 1       # Increase the hour
+        
+        if self.counter % 24 == 0:  # If the counter is a multiple of 24, increase the day, reset hour to first hour
+            self.day += 1
+            self.hour = 1
 
-        # Update the state
-        self.state = np.array([self.battery_level, self.time_of_day, self.car_available])
+        terminated = self.counter == len(self.price_values.flatten()) - 1   # If the counter is equal to the number of hours in the test data, terminate the episode
+        truncated = False
 
-        # Check if the episode is done
-        done = self.current_step == len(self.data) - 1
+        info = action                                                 # The final action taken after all constraints!
+        self.state = self.observation()                               # Update the state
 
-        #self.revenue += reward
+        return self.state, reward, terminated, truncated, info
 
-        return self.state, reward, done, {'step':self.current_step}
-
-    def reset(self) -> np.ndarray:
-        """ Resets the environment.
-        """
-        # Start with a minimum battery level
-        self.battery_level = self.min_required_battery
-        # Reset the time of day and current step
-        self.time_of_day = 0
-        self.current_step = 0
-        # Generate a random car availability
-        self.car_available = np.random.choice([0, 1])
-        # Initialize the state
-        self.state = np.array([self.battery_level, self.time_of_day, self.car_available])
+    def observation(self):  # Returns the current state
+        battery_level = self.battery_level
+        price = self.price_values[self.day -1][self.hour-1]
+        hour = self.hour
+        day_of_week = self.timestamps[self.day -1].dayofweek  # Monday = 0, Sunday = 6
+        day_of_year = self.timestamps[self.day -1].dayofyear  # January 1st = 1, December 31st = 365
+        month = self.timestamps[self.day -1].month            # January = 1, December = 12
+        year = self.timestamps[self.day -1].year
+        self.state = np.array([battery_level, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year)])
 
         return self.state
-
-    def get_current_price(self) -> float:
-        """ Returns the current electricity price.
-
-        Returns:
-            float: The current electricity price.
-        """
-        if not (self.time_of_day + self.current_step):
-            return self.data.iloc[0]["H1"]
-        else:
-            return self.data.iloc[self.current_step]["H" + ("0" if not (self.time_of_day + self.current_step) else str(self.time_of_day))]

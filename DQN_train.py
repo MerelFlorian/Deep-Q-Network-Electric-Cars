@@ -1,5 +1,5 @@
 import numpy as np
-from ElectricCarEnv import ElectricCarEnv
+from ElectricCarEnv import Electric_Car
 import pandas as pd
 from algorithms import DQNAgent
 import torch
