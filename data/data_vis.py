@@ -1,20 +1,24 @@
+# data_vis.py 
 # Data cleaning and visualizations
 
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 from typing import List
 import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from matplotlib.colors import Normalize, LinearSegmentedColormap
-from collections import defaultdict
-import matplotlib.cm as cm
 import datetime 
-import copy
-import itertools
+from matplotlib.patches import Patch
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+import seaborn as sns
+import scipy.stats as stats
+import scikit_posthocs as sp
 
 
+# Functions
 def clean_data(csv_file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
     Removes empty rows. Dates are converted to datetime format. Columns are renamed to H1, H2, H3.
@@ -89,70 +93,40 @@ def long_format(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_long  
 
-def plot_daily_average_values_per_year(df_long: pd.DataFrame)-> None:
-    """Plot the daily average values per year
+def candlestick_format(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
+    """
+    Convert the DataFrame to candlestick chart format for different time frames.
 
     Args:
-        df_long (pd.DataFrame): Long format DataFrame
+        df (pd.DataFrame): DataFrame with rows for each day and columns for each hour (H1, H2, ..., H24).
+        timeframe (str): Time frame for the candlestick chart ('hourly', 'daily', 'weekly', 'monthly').
 
     Returns:
-        None: Plot is saved to images folder
+        pd.DataFrame: DataFrame in the specified time frame candlestick chart format.
     """
-    # Plotting
-    plt.figure(figsize=(15, 5))
-    for year in df_long['datetime'].dt.year.unique():
-        # Select data for the year
-        year_data = df_long[df_long['datetime'].dt.year == year]
-        # Group by day and calculate the mean for each day
-        daily_mean = year_data.set_index('datetime').resample('D').mean()
-        # Plot
-        plt.plot(daily_mean.index, daily_mean['Value'], label=str(year))
+    if timeframe not in ['hourly', 'daily', 'weekly', 'monthly']:
+        raise ValueError("Invalid timeframe. Choose from 'hourly', 'daily', 'weekly', 'monthly'.")
 
-    # Formatting
-    plt.xlabel('Datetime')
-    plt.ylabel('Average Daily Value')
-    plt.title('Daily Average Values Per Year')
-    plt.legend()
-    plt.savefig('images/daily_average_values_per_year.png')
+    # Reshape the DataFrame to have a row for each hour
+    hours = []
+    for _, row in df.iterrows():
+        date = row['date']
+        for i in range(1, 25):
+            hour = {'datetime': pd.Timestamp(date) + pd.Timedelta(hours=i-1),
+                    'value': row[f'H{i}']}
+            hours.append(hour)
+    reshaped_df = pd.DataFrame(hours)
+    reshaped_df.set_index('datetime', inplace=True)
 
-def candlestick_format(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert the DataFrame to weekly candlestick chart format.
-
-    Args:
-        df (pd.DataFrame): DataFrame with hourly data and a 'date' column.
-
-    Returns:
-        pd.DataFrame: DataFrame in weekly candlestick chart format.
-    """
-    # Ensure 'date' is a datetime and set it as index
-    df['date'] = pd.to_datetime(df['date'])
-    df.set_index('date', inplace=True)
-
-    # Calculate 'High' and 'Low' for each day before resampling
-    df['High'] = df.loc[:, 'H1':'H24'].max(axis=1)
-    df['Low'] = df.loc[:, 'H1':'H24'].min(axis=1)
-
-    # Resample the data to weekly frequency
-    # 'Open' is the first 'H1' value of the week, 'Close' is the last 'H23' value of the week
-    weekly_df = df.resample('W').agg({'H1': 'first', 
-                                      'H24': 'last', 
-                                      'High': 'max', 
-                                      'Low': 'min'})
-
-    # Rename columns to match OHLC convention
-    weekly_df.rename(columns={'H1': 'Open', 'H24': 'Close'}, inplace=True)
-
-    return weekly_df[['Open', 'High', 'Low', 'Close']]
-
-def candlestick(ohlc: pd.DataFrame, description) -> None:
-    """Plot a candlestick chart of prices.
-
-    Args:
-        df (pd.DataFrame): DataFrame
-        description (str): Short description of the chart
-    """
-    # Plot candlestick chart
-    mpf.plot(ohlc, type='candle', style='charles', title=f'Weekly Candlestick Chart {description}', savefig=f'images/candlestick{description}.png')
+    # Resampling based on the chosen timeframe
+    resample_map = {
+        'hourly': 'H',
+        'daily': 'D',
+        'weekly': 'W',
+        'monthly': 'M'
+    }
+    resampled_df = reshaped_df['value'].resample(resample_map[timeframe]).ohlc()
+    return resampled_df
 
 def calculate_ema(ohlc: pd.DataFrame, span: int) -> pd.Series:
     """Calculate the Exponential Moving Average for a given span using the 'Open' price
@@ -164,67 +138,36 @@ def calculate_ema(ohlc: pd.DataFrame, span: int) -> pd.Series:
     Returns:
         pd.Series: EMA series
     """
-    return ohlc['Open'].ewm(span=span, adjust=False).mean()
+    return ohlc['open'].ewm(span=span, adjust=False).mean()
 
-def hourly_candlestick_format(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert the DataFrame to hourly candlestick chart format.
-
-    Args:
-        df (pd.DataFrame): DataFrame with hourly data.
-
-    Returns:
-        pd.DataFrame: DataFrame in hourly candlestick chart format.
-    """
-    # Reshape the DataFrame to have a row for each hour
-    hours = []
-    for _, row in df.iterrows():
-        date = row['date']
-        for i in range(1, 25):
-            hour = {'datetime': pd.Timestamp(date) + pd.Timedelta(hours=i-1),
-                    'Value': row[f'H{i}']}
-            hours.append(hour)
-    hourly_df = pd.DataFrame(hours)
-
-    # Determine 'Open', 'High', 'Low', 'Close' for each hour
-    hourly_df['Open'] = hourly_df['Value']
-    hourly_df['High'] = hourly_df['Value']
-    hourly_df['Low'] = hourly_df['Value']
-    hourly_df['Close'] = hourly_df['Value']
-
-    hourly_df.set_index('datetime', inplace=True)
-    
-    return hourly_df[['Open', 'High', 'Low', 'Close']]
-
-def candlestick_hourly(ohlc: pd.DataFrame, description: str, ema_spans: List[int]) -> None:
-    """Plot an hourly candlestick chart of prices with EMAs.
+def candlestick(ohlc: pd.DataFrame, description: str) -> None:
+    """Plot a candlestick chart of prices with EMAs. Can be used for different time frames.
 
     Args:
         ohlc (pd.DataFrame): DataFrame in OHLC format
         description (str): Short description of the chart
         ema_spans (list[int]): List of spans for EMA calculation
     """
-    # Add EMAs to the DataFrame
-    for span in ema_spans:
-        ohlc[f'EMA_{span}'] = ohlc['Open'].ewm(span=span, adjust=False).mean()
-
     # Ensure the index is a DatetimeIndex
     ohlc.index = pd.DatetimeIndex(ohlc.index)
 
     # Plot candlestick chart
-    mpf.plot(ohlc, type='candle', style='charles', title=f'Hourly Candlestick Chart {description}', \
-             mav=tuple(ema_spans), savefig=f'../images/candlestick_hourly_{description}.png')
+    mpf.plot(ohlc, type='candle', style='charles', title=f'Candlestick Chart {description}', savefig=f'../images/candlestick_{description}.png')
 
 def action_to_color(action)-> None:
     """
     Maps the action value to a color.
     Positive actions (buying) are mapped to red, negative (selling) to blue, and zero (doing nothing) to gray.
     """
+    # Negative action (buying)
     if action < 0:
-        return (1, 0, 0, 1)  # Solid red for buying
+        return (1, 0, 0, 1)  
+    # Positive action (selling)
     elif action > 0:
-        return (0, 0, 1, 1)  # Solid blue for selling
+        return (0, 0, 1, 1)  
+    # Zero action (doing nothing)
     else:
-        return (0.5, 0.5, 0.5, 1)  # Gray for doing nothing
+        return (0.5, 0.5, 0.5, 1)  
 
 def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     """
@@ -234,7 +177,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
         df (pd.DataFrame): DataFrame containing the data
         algorithm (str): Algorithm used
     """
-    # Convert defaultdict to DataFrame and limit the data to the first 48 rows (2 days)
+    # Convert defaultdict to DataFrame and limit the data to 3 days
     df = pd.DataFrame(df).head(72)
 
     # Ensure the 'date' column is in datetime format
@@ -287,7 +230,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
         Line2D([0], [0], marker='o', color='w', label='Sell',
             markersize=10, markerfacecolor='blue'),
         Line2D([0], [0], marker='o', color='w', label='Buy', 
-               markersize=10, markerfacecolor='red'),
+            markersize=10, markerfacecolor='red'),
         Line2D([0], [0], marker='o', color='w', label='Do nothing',
             markersize=10, markerfacecolor='gray'),
         # Additional legend element for unavailability
@@ -312,7 +255,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=10, style='italic')
 
     plt.tight_layout()
-    plt.savefig(f'images/price_battery_level_{algorithm}.png')
+    plt.savefig(f'images/price_battery_level_{algorithm}{i}.png')
 
 def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     """
@@ -336,24 +279,261 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     plt.title('Cumulative Rewards over Days for Baseline Algorithms')
     plt.legend()
     plt.grid(True)
-    plt.savefig('images/cumulative_reward.png')
+    plt.savefig('images/cumulative_reward{}.png')
 
+def hourly_patterns(df: pd.DataFrame)-> None:
+    """Plot hourly patterns for each year
+
+    Args:
+        df (pd.Dataframe): DataFrame with hourly data.
+    """ 
+    # Convert the 'date' column to datetime
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Select only the hourly columns and convert them to numeric values
+    hourly_data = df.iloc[:, 1:25].apply(pd.to_numeric, errors='coerce')
+
+    # Set up the figure
+    plt.figure(figsize=(20, 10))
+
+    # Define offsets so that the boxplots for each year don't directly overlap
+    offsets = [-0.2, 0, 0.2]
+    colors = ['skyblue', 'limegreen', 'salmon']  # Colors for different years
+    years = [2007, 2008, 2009]
+
+    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
+
+    # Create boxplots for each hour and year
+    for hour in range(1, 25):
+        for i, y in enumerate(years):
+            # Filter by year and select the current hour
+            hourly_prices = df[df['date'].dt.year == y].iloc[:, hour]
+
+            # Create a boxplot for this hour and year
+            bp = plt.boxplot(hourly_prices, positions=[hour + offsets[i]], widths=0.15, patch_artist=True,
+                            boxprops=dict(facecolor=colors[i]), medianprops=dict(color="black"), showfliers=False)
+
+    # Title and labels
+    plt.title('Hourly Electricity Price Distribution by Year (2007-2009)')
+    plt.xlabel('Hour of the Day')
+    plt.ylabel('Price (Euro)')
+    plt.xticks(range(1, 25), [f'H{hour}' for hour in range(1, 25)])
+    plt.grid(True)
+
+    # Custom legend
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor=colors[i], edgecolor='black', label=f'Year {y}') for i, y in enumerate(years)]
+    plt.legend(handles=legend_elements, title="Year")
+
+    # Save the plot
+    plt.savefig('../images/combined_years_hourly_stats_adjusted.png')
+
+def daily_patterns(df: pd.DataFrame) -> None:
+    """Plot daily patterns for each year
+
+    Args:
+        df (pd.DataFrame): DataFrame with hourly data.
+    """
+    # Convert the 'date' column to datetime
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Calculate the mean price for each date
+    df['mean_daily_price'] = df.iloc[:, 1:25].mean(axis=1)
+
+    # Add column with monday-sunday
+    df['day_of_week'] = df['date'].dt.day_name()
+
+    # Define the correct order and colors for the days of the week
+    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    colors = ['skyblue', 'limegreen', 'salmon']  # Colors for different years
+    years = [2007, 2008, 2009]
+
+    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
+
+    # Set up the figure
+    plt.figure(figsize=(20, 10))
+
+    # Define offsets for each year to avoid overlapping
+    offsets = [-0.2, 0, 0.2]
+
+    # Loop for each year and each day
+    for i, year in enumerate(years):
+        df_year = df[df['date'].dt.year == year]
+
+        # Convert 'day_of_week' to a categorical type with the specified order
+        df_year['day_of_week'] = pd.Categorical(df_year['day_of_week'], categories=days_order, ordered=True)
+
+        # Create boxplots
+        for day_index, day in enumerate(days_order):
+            # Filter data for the specific day of the week
+            daily_prices = df_year[df_year['day_of_week'] == day]['mean_daily_price']
+
+            # Create a boxplot for this day and year
+            plt.boxplot(daily_prices, positions=[day_index + 1 + offsets[i]], widths=0.15, patch_artist=True,
+                        boxprops=dict(facecolor=colors[i]), medianprops=dict(color="black"), showfliers=False)
+
+    # Title and labels
+    plt.title('Daily Electricity Price Distribution by Year (2007-2009)')
+    plt.xlabel('Day of the Week')
+    plt.ylabel('Price (Euro)')
+    plt.xticks(range(1, 8), days_order)
+    plt.grid(True)
+
+    # Custom legend
+    legend_elements = [Patch(facecolor=colors[i], edgecolor='black', label=f'Year {year}') for i, year in enumerate(years)]
+    plt.legend(handles=legend_elements, title="Year")
+
+    # Save the plot
+    plt.savefig('../images/daily_price_distribution_years.png')
+
+def monthly_patterns(df: pd.DataFrame) -> None:
+    """Plot monthly patterns for each year
+
+    Args:
+        df (pd.DataFrame): DataFrame with hourly data.
+    """
+    # Convert the 'date' column to datetime
+    df['date'] = pd.to_datetime(df['date'])
+
+    # Calculate the mean price for each date
+    df['mean_daily_price'] = df.iloc[:, 1:25].mean(axis=1)
+
+    # Add column with month
+    df['month'] = df['date'].dt.month_name()
+
+    # Define the correct order and colors for the months
+    months_order = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December']
+    colors = ['skyblue', 'limegreen', 'salmon']  # Colors for different years
+    years = [2007, 2008, 2009]
+
+    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
+
+    # Set up the figure
+    plt.figure(figsize=(20, 10))
+
+    # Define offsets for each year to avoid overlapping
+    offsets = [-0.2, 0, 0.2]
+
+    # Loop for each year and each month
+    for i, year in enumerate(years):
+        df_year = df[df['date'].dt.year == year]
+
+        # Convert 'month' to a categorical type with the specified order
+        df_year['month'] = pd.Categorical(df_year['month'], categories=months_order, ordered=True)
+
+        # Create boxplots
+        for month_index, month in enumerate(months_order):
+            # Filter data for the specific month
+            monthly_prices = df_year[df_year['month'] == month]['mean_daily_price']
+
+            # Create a boxplot for this month and year
+            plt.boxplot(monthly_prices, positions=[month_index + 1 + offsets[i]], widths=0.15, patch_artist=True,
+                        boxprops=dict(facecolor=colors[i]), medianprops=dict(color="black"), showfliers=False)
+            
+    print(df_year.head())
+
+    # Title and labels
+    plt.title('Monthly Electricity Price Distribution by Year (2007-2009)')
+    plt.xlabel('Month')
+    plt.ylabel('Price (Euro)')
+    plt.xticks(range(1, 13), months_order)
+    plt.grid(True)
+
+    # Custom legend
+    legend_elements = [Patch(facecolor=colors[i], edgecolor='black', label=f'Year {year}') for i, year in enumerate(years)]
+    plt.legend(handles=legend_elements, title="Year")
+
+    # Save the plot
+    plt.savefig('../images/monthly_price_distribution_years.png')
+
+def stats_season(df: pd.DataFrame)->None:
+    """Test hypothesis for hourly data (ANOVA or Kruskal wallis test)
+
+    Args:
+        df (pd.DataFrame): DataFrame with hourly data.
+    """
+    # Convert the 'date' column to datetime
+    df['date'] = pd.to_datetime(df['datetime'])
+
+    # Add season column
+    df['season'] = df['date'].dt.month.apply(lambda x: 'winter' if x in [12, 1, 2] else 'spring' if x in [3, 4, 5] else 'summer' if x in [6, 7, 8] else 'fall')
+
+    # Kruskal wallis test
+    # H0: The mean daily price is the same for all seasons
+    # H1: The mean price is not the same for all seasons
+    # alpha = 0.05
+    print(stats.kruskal(df[df['season'] == 'winter']['Value'],df[df['season'] == 'fall']['Value'],df[df['season'] == 'summer']['Value'], df[df['season'] == 'spring']['Value']))
+
+    # Post hoc test
+    # Perform Dunn's test for post hoc analysis
+    print(sp.posthoc_dunn(df, val_col='Value', group_col='season', p_adjust='bonferroni'))
+
+    # Statistical table with median, Q1, Q3, min and max
+    print(df.groupby('season')['Value'].describe())
+    print(df.groupby('season')['Value'].median())
+
+def table_summary(df: pd.DataFrame) -> None:
+    """Saves a table with summary statistics for each year and the entire dataset
+
+    Args:
+        df (pd.DataFrame): DataFrame with hourly data in long format.
+    """
+    # Convert the 'date' column to datetime
+    df['datetime'] = pd.to_datetime(df['datetime'])
+
+    # Create a DataFrame for summary statistics
+    df_table = pd.DataFrame()
+
+    # Add summary statistics for each year
+    for year in [2007, 2008, 2009]:
+        df_year = df[df['datetime'].dt.year == year]
+        df_table[year] = [
+            round(df_year['Value'].mean(), 2),
+            round(df_year['Value'].median(), 2),
+            round(df_year['Value'].min(), 2),
+            round(df_year['Value'].max(), 2),
+            round(df_year['Value'].quantile(0.25), 2),
+            round(df_year['Value'].quantile(0.75), 2),
+            df_year['Value'].isna().sum()
+        ]
+
+    # Add summary statistics for the entire dataset
+    df_table['Overall'] = [
+        round(df['Value'].mean(), 2),
+        round(df['Value'].median(), 2),
+        round(df['Value'].min(), 2),
+        round(df['Value'].max(), 2),
+        round(df['Value'].quantile(0.25), 2),
+        round(df['Value'].quantile(0.75), 2),
+        df['Value'].isna().sum()
+    ]
+
+    # Set the index for better readability
+    df_table.index = ['Mean', 'Median', 'Min', 'Max', 'Q1', 'Q3', 'NA Count']
+
+    # Print the table
+    print(df_table)
+
+    # Save the table to a csv file
+    df_table.to_csv('../data/summary_statistics.csv')
+
+    
 
 if __name__ == "__main__":
     # Clean the data
     df = clean_data('train_clean.csv')
-    # # Add date columns
-    # df = add_date_columns(df)
-    # # Save the DataFrame to a csv file
-    # df.to_csv('data/train_clean.csv', index=False)
+    
+    # Make pandas dataframe 
+    df = pd.DataFrame(df)
+    # # Add columns to clip to 200
+    # columns_to_clip = [f'H{i}' for i in range(1, 25)]  # List of columns H1, H2, ..., H24
 
-    # # Clean the data
-    # df = clean_data('data/train.csv')
-
-    # get deepcopy of df for candlestick chart
-    df_candle = copy.deepcopy(df)
-
-    # # # Make a plot for each year
+    # # Applying clip to each of these columns
+    # for col in columns_to_clip:
+    #     df[col] = df[col].clip(upper=200)
+    
+     # # # Make a plot for each year
     # # for y in [2007,  2008, 2009]:
     # #     # Get candlestick dataset for each year
     # #     df_year = df_candle[df_candle['date'].dt.year == y]
@@ -362,25 +542,24 @@ if __name__ == "__main__":
     # #     # Make dataframe for candlestick chart and save 
     # #     candlestick(ohlc_year, str(y))
 
-    # Select the first week of 2007
-    start_date = '2007-02-01'
-    end_date = '2007-02-02'
-    df_2007_first_week = df_candle[(df_candle['date'] >= start_date) & (df_candle['date'] <= end_date)]
+    # # Select the first two weeks of 2007
+    # start_date = '2007-02-01'
+    # end_date = '2007-02-14'
+    # df_2007_first_week = df_candle[(df_candle['date'] >= start_date) & (df_candle['date'] <= end_date)]
 
-    # Convert dataset to hourly candlestick chart format
-    ohlc_hourly = hourly_candlestick_format(df_2007_first_week)
-
-    # Generate a list of all combinations from (2,3) to (11,12)
-    options_range = range(2, 13)  # Since the last value in Python's range is exclusive, we use 13
-    all_combinations = [[i, j] for i, j in itertools.combinations(options_range, 2)]
-
-    for range in all_combinations:
-        # Make dataframe for hourly candlestick chart and save 
-        candlestick_hourly(ohlc_hourly, f'first_week_2007_{range}', range)  # Adding 12-hour and 26-hour EMAs
-
-    # # Convert the DataFrame to long format
-    # df_long = long_format(df)
+    # frame = "hourly"
     
-    # # Save the DataFrame to a csv file
-    # # Save the DataFrame to a csv file
-    # df_long.to_csv('data/long_format.csv', index=False) 
+    # for y in [2007,  2008, 2009]:
+    #     df_c = df[df['date'].dt.year == y]
+    #     print(df_c.head())
+    #     print(frame)
+        
+    #     # Convert dataset to candlestick chart format
+    #     ohlc = candlestick_format(df_c, frame)
+
+    #     # Make dataframe for hourly candlestick chart and save 
+    #     candlestick(ohlc, f'{y}_{frame}_clipped')  # Adding 12-hour and 26-hour EMAs
+        
+    hourly_patterns(df)
+    daily_patterns(df)
+    monthly_patterns(df)
