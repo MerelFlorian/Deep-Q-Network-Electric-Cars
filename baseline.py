@@ -105,7 +105,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     Returns:
         Tuple[QLearningAgent | BuyLowSellHigh | EMA, bool]: The agent and whether it is a reinforcement learning agent.
     """
-    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "all"]:
+    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "all"]:
         print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema')
         exit()
     if sys.argv[1] == 'qlearning':
@@ -114,6 +114,13 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         return buylowsellhigh(env), False, 'BLSH'
     elif sys.argv[1] == 'ema':
         return ema(env), False, "EMA"
+    elif sys.argv[1] =="DQN":
+        state_size = 3  
+        action_size = 5000 
+        test_agent = DQNAgent(state_size, action_size)
+        test_agent.model = np.load('models/dqn_model.pth')
+        return test_agent, True, "DQN"
+
     else: 
         return "all", True, "All"
         
