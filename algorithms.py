@@ -26,10 +26,10 @@ class QLearningAgent:
         """	
         Discretizes the state into a tuple of indices.
         """
-        battery, time, availability = state
-        battery_idx = np.digitize(battery, self.state_bins[0]) - 1
-        time_idx = np.digitize(time, self.state_bins[1]) - 1
-        availability_idx = int(availability)
+        battery_level, _, hour, available , _, _, _, _ = state
+        battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
+        time_idx = np.digitize(hour, self.state_bins[1]) - 1
+        availability_idx = int(available)
         return battery_idx, time_idx, availability_idx
 
     def discretize_action(self, action):
@@ -74,8 +74,8 @@ class QLearningAgent:
         Checks if the state is valid.
         """
         # Implement logic to check if state is valid
-        battery, time, availability = state
-        return 0 <= battery <= self.max_battery and 1 <= time <= 24 and 0 <= availability <= 1
+        battery_level, price, hour, available , day_of_week, day_of_year, month, year = state
+        return 0 <= battery_level <= self.max_battery and 1 <= hour <= 24 and 0 <= available <= 1
     
 class EMA:
   """Implements an exponential moving average cross strategy
