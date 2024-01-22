@@ -167,9 +167,7 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
 
         # Validate the model
         with torch.no_grad():
-            env2 = ElectricCarEnv()
-            # Load validation data into the environment
-            env2.data = pd.read_csv('data/validate_clean.csv') 
+            env2 = Electric_Car("data/validate_clean.csv")
             state = env.reset()
             done = False
             total_reward = 0
@@ -197,7 +195,7 @@ def train_policy_gradient(env: Env, policy_network: LSTM_PolicyNetwork, episodes
     return best_reward
 
 if __name__ == "__main__":
-    env = ElectricCarEnv()
+    env = Electric_Car("data/train_clean.csv")
 
     if sys.argv[1] == 'tune':
         study = optuna.create_study()  # Create a study object

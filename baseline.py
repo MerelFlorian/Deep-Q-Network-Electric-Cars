@@ -125,11 +125,9 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         return "all", True, "All"
         
 # Initialize the environment
-env = ElectricCarEnv()
+env = Electric_Car("data/validate_clean.csv")
 # Initialize the agent
 test_agent, rl, algorithm = process_command(env)
-# Load validation data into the environment
-env.data = pd.read_csv('data/validate_clean.csv') 
 
 # Test the agent
 if test_agent == "all":
