@@ -1,7 +1,6 @@
 # data_vis.py 
 # Data cleaning and visualizations
 
-# imports
 import pandas as pd
 import matplotlib.pyplot as plt
 import mplfinance as mpf

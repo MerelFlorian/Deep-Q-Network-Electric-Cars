@@ -4,6 +4,7 @@ from typing import Type, Tuple
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.init as init
 from collections import deque
 
 class QLearningAgent:
@@ -152,13 +153,13 @@ class EMA:
       elif self.short_ema < self.long_ema:
           self.ls_cross = 0
           self.sl_cross += 1
-          if self.sl_cross > 1 and 3 <= state[1] <= 6:
-            self.action = -(self.max_battery - state[0]) / 8
+          if self.sl_cross >= 1 and 3 <= state[1] <= 6:
+            self.action = -(self.max_battery - state[0]) / 8.2
       # If the short EMA is above the long EMA, sell
       elif self.short_ema > self.long_ema:
           self.sl_cross = 0
           self.ls_cross += 1
-          if self.ls_cross > 1:
+          if self.ls_cross >= 1:
               self.action = state[0]
       # Otherwise, do nothing
       else:
@@ -182,6 +183,8 @@ class BuyLowSellHigh:
       self.new_day = False
       self.action = None
       self.buy = None
+      self.counter = 0
+      self.s_counter = 0
   
   def choose_action(self, price: float,  state: list) -> float:
       """ Chooses an action for the current time step.
@@ -205,42 +208,61 @@ class BuyLowSellHigh:
           self.buy = price
       # Sell in the evening
       elif self.buy and price >= self.buy:
-          self.action = state[0]
+          if state[2]:
+              self.counter += 1
+              if self.counter > 4:
+                  self.action = state[0]
+                  if state[0] - (25 / 0.9) < 1:
+                      self.counter = 0
+          else:
+              self.action = state[0]
           
       return self.action
-
+  
 class QNetwork(nn.Module):
-    """
-    This class represents the neural network used to approximate the Q-function.
-    """
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, activation_fn=torch.relu):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(state_size, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, action_size)
+        self.fc1 = nn.Linear(state_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)
+        self.fc4 = nn.Linear(32, action_size)
+        self.activation_fn = activation_fn
+
+        # Apply He initialization
+        init.kaiming_normal_(self.fc1.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
+        init.kaiming_normal_(self.fc2.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
+        init.kaiming_normal_(self.fc3.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
+        init.kaiming_normal_(self.fc4.weight, mode='fan_in', nonlinearity='linear')
 
     def forward(self, state):
-        x = torch.relu(self.fc1(state))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
+        x = self.activation_fn(self.fc1(state))
+        x = self.activation_fn(self.fc2(x))
+        x = self.activation_fn(self.fc3(x))
+        return self.fc4(x)
+
 
 class DQNAgent:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, activation_fn=torch.relu):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=10000)
-        self.gamma = 0.95  # discount factor
+        self.memory = deque(maxlen=1000)
+        self.gamma = gamma  # discount factor
+        self.learning_rate = learning_rate
+        self.model = QNetwork(state_size, action_size, activation_fn)
+        self.target_model = QNetwork(state_size, action_size, activation_fn)
+
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.batch_size = 64
-        self.learning_rate = 0.001
 
-        self.model = QNetwork(state_size, action_size)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.train_step_counter = 0  # Counter to track training steps
+        self.update_target_counter = 0  # Counter to track steps for updating target network
+
 
     def remember(self, state, action, reward, next_state, done):
         """
@@ -248,7 +270,7 @@ class DQNAgent:
         """
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state):
+    def choose_action(self, state):
         """Returns actions for given state as per current policy."""
         state_vector = [state[0] / 50, state[1] / 24, state[2]]  # Assuming state is a list or array
         state_tensor = torch.FloatTensor(state_vector).unsqueeze(0)
@@ -264,8 +286,10 @@ class DQNAgent:
         """
         Function to train the neural network on a batch of samples from memory.
         """
-        if len(self.memory) < self.batch_size:
-            return  # Do not train if not enough samples
+        self.train_step_counter += 1
+
+        if len(self.memory) < self.batch_size or self.train_step_counter % 4 != 0:
+            return  # Train only every 4th step and if enough samples
 
         minibatch = random.sample(self.memory, self.batch_size)
         
@@ -298,13 +322,23 @@ class DQNAgent:
             Q_next = self.model(next_states).max(1)[0].detach()
             Q_target = rewards + (self.gamma * Q_next * (1 - dones))
 
-        # Calculate loss
-        loss = nn.MSELoss()(Q_expected, Q_target.unsqueeze(1))
+        # Instantiate HuberLoss
+        criterion = nn.HuberLoss()
+
+        # Compute the loss
+        loss = criterion(Q_expected, Q_target.unsqueeze(1))
 
         # Backpropagation
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        # Increment the step counter after the training step
+        self.update_target_counter += 1
+
+        # Update the target network if counter reaches 100,000
+        if self.update_target_counter % 100000 == 0:
+            self.target_model.load_state_dict(self.model.state_dict())
 
         # Update epsilon
         if self.epsilon > self.epsilon_min:

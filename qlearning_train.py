@@ -1,5 +1,5 @@
 import numpy as np
-from ElectricCarEnv import ElectricCarEnv
+from ElectricCarEnv import Electric_Car
 from algorithms import QLearningAgent
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -20,14 +20,13 @@ def validate_agent(test_env, test_agent, qtable):
     return total_rewards
   
 # Environment and Agent Initialization
-env = ElectricCarEnv()
+env = Electric_Car("data/train_clean.csv")
 state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
 action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)
 agent = QLearningAgent(state_bins, action_bins)
 
 # Load validation data into the environment
-test_env = ElectricCarEnv()
-test_env.data = pd.read_csv('data/validate_clean.csv') 
+test_env = Electric_Car("data/validate_clean.csv")
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop

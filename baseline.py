@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from ElectricCarEnv import ElectricCarEnv
+from ElectricCarEnv import Electric_Car
 from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgent
 from gym import Env
 from typing import Type, Tuple
@@ -10,7 +10,7 @@ from collections import defaultdict
 from data.data_vis import visualize_bat, plot_revenue
 
 # Constants
-NUM_EPISODES = 1 # Define the number of episodes for training
+NUM_EPISODES = 20 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA], rl = False) -> None:
     """ Function to validate the agent on a validation set.
@@ -105,7 +105,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     Returns:
         Tuple[QLearningAgent | BuyLowSellHigh | EMA, bool]: The agent and whether it is a reinforcement learning agent.
     """
-    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "all"]:
+    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "all"]:
         print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema')
         exit()
     if sys.argv[1] == 'qlearning':
@@ -114,15 +114,20 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         return buylowsellhigh(env), False, 'BLSH'
     elif sys.argv[1] == 'ema':
         return ema(env), False, "EMA"
+    elif sys.argv[1] =="DQN":
+        state_size = 3  
+        action_size = 5000 
+        test_agent = DQNAgent(state_size, action_size)
+        test_agent.model = np.load('models/dqn_model.pth')
+        return test_agent, True, "DQN"
+
     else: 
         return "all", True, "All"
         
 # Initialize the environment
-env = ElectricCarEnv()
+env = Electric_Car("data/validate_clean.csv")
 # Initialize the agent
 test_agent, rl, algorithm = process_command(env)
-# Load validation data into the environment
-env.data = pd.read_csv('data/validate_clean.csv') 
 
 # Test the agent
 if test_agent == "all":
