@@ -101,10 +101,12 @@ class Electric_Car(gym.Env):
         battery_level = self.battery_level
         price = self.price_values[self.day -1][self.hour-1]
         hour = self.hour
+        # ADDED to code: car availability
+        available = self.car_is_available
         day_of_week = self.timestamps[self.day -1].dayofweek  # Monday = 0, Sunday = 6
         day_of_year = self.timestamps[self.day -1].dayofyear  # January 1st = 1, December 31st = 365
         month = self.timestamps[self.day -1].month            # January = 1, December = 12
         year = self.timestamps[self.day -1].year
-        self.state = np.array([battery_level, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year)])
+        self.state = np.array([battery_level, price, int(hour), available ,int(day_of_week), int(day_of_year), int(month), int(year)])
 
         return self.state
