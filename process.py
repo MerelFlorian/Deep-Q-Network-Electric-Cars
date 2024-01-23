@@ -1,9 +1,6 @@
 from data.data_vis import clean_data
 import pandas as pd
 
-PATH = "data/train.xlsx"
-SAVE_TO = "data/features.xlsx"
-
 def compute_stats(data: dict, df: pd.DataFrame, min: int, max: int) -> dict:
     """ Computes the moving average of the data and adds it to a dictionary of columns.
 
@@ -48,12 +45,26 @@ def season(month: int) -> int:
         return 4
 
 def weekend(day: int) -> int:
+    """ Returns 1 if the day is a weekend, 0 otherwise.
+
+    Args:
+        day (int): The day of the week.
+
+    Returns:
+        int: 1 if the day is a weekend, 0 otherwise.
+    """
     if day in [5, 6]:
         return 1
     else:
         return 0
     
-def main(path: str, save_to:str) -> None:
+def create_features(path: str) -> None:
+    """ Creates a new excel file with features extracted from the dataset.
+        NOTE: This function does not create "polluting" features like global statistics.
+
+    Args:
+        path (str): The path to the dataset.
+    """
     # Load the dataset
     df = clean_data(path)
 
@@ -94,8 +105,4 @@ def main(path: str, save_to:str) -> None:
     new_df = new_df.dropna()
 
     # Save the new_df to a new excel file
-    new_df.to_excel(save_to, index=False)
-
-if __name__ == "__main__":
-
-    main(PATH, SAVE_TO)
+    new_df.to_excel("features.xlsx", index=False)
