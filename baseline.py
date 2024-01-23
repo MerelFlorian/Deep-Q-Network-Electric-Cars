@@ -115,7 +115,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         state_size = 8  
         action_size = 100
         test_agent = DQNAgent(state_size, action_size)
-        test_agent.model = np.load('models/dqn_model.pth')
+        test_agent.model = np.load('models/DQN_version_2/lr:0.000761057149522146_gamma:0.6745340812375066_act:<built-in method tanh of type object at 0x7f7276b30e20>_actsize:100.pth')
         return test_agent, "DQN"
 
     else: 
