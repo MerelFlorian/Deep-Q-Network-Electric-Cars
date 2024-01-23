@@ -16,7 +16,7 @@ def objective(trial):
     gamma = trial.suggest_float("gamma", 0.5, 0.99)
     activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
-    state_size = 3
+    state_size = 8
     episodes = 10
 
     activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
@@ -53,7 +53,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
 
     total_train_rewards = []
     total_val_rewards = []
-    state_size = 3
+    state_size = 8
 
     for episode in range(episodes):
         state = env.reset()
