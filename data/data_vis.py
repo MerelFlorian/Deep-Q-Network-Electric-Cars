@@ -267,7 +267,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=10, style='italic')
 
     plt.tight_layout()
-    plt.savefig(f'images/price_battery_level_{algorithm}{i}.png')
+    plt.savefig(f'images/price_battery_level_{algorithm}{i}_new.png')
 
 def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     """
@@ -328,7 +328,7 @@ def hourly_patterns(df: pd.DataFrame)-> None:
     # Title and labels
     plt.title('Hourly Electricity Price Distribution by Year (2007-2009)')
     plt.xlabel('Hour of the Day')
-    plt.ylabel('Price (Euro)')
+    plt.ylabel('Price (Euros/MWh)')
     plt.xticks(range(1, 25), [f'H{hour}' for hour in range(1, 25)])
     plt.grid(True)
 
@@ -387,7 +387,7 @@ def daily_patterns(df: pd.DataFrame) -> None:
     # Title and labels
     plt.title('Daily Electricity Price Distribution by Year (2007-2009)')
     plt.xlabel('Day of the Week')
-    plt.ylabel('Price (Euro)')
+    plt.ylabel('Price (Euro/MWh)')
     plt.xticks(range(1, 8), days_order)
     plt.grid(True)
 
@@ -448,7 +448,7 @@ def monthly_patterns(df: pd.DataFrame) -> None:
     # Title and labels
     plt.title('Monthly Electricity Price Distribution by Year (2007-2009)')
     plt.xlabel('Month')
-    plt.ylabel('Price (Euro)')
+    plt.ylabel('Price (Euro/MWh)')
     plt.xticks(range(1, 13), months_order)
     plt.grid(True)
 
@@ -517,10 +517,22 @@ def table_summary(df: pd.DataFrame) -> None:
         round(df['Value'].quantile(0.75), 2),
         df['Value'].isna().sum()
     ]
+    # Give percentage of values above 200
+    print((df[df['Value'] > 200]['Value'].count()/df['Value'].count())*100)
 
     # Clip dataset to 200 and add summary statistics
-    
+    df_clip = df[df['Value'] <= 200]
 
+    df_table['Overall (clip 200)'] = [
+        round(df_clip['Value'].mean(), 2),
+        round(df_clip['Value'].median(), 2),
+        round(df_clip['Value'].min(), 2),
+        round(df_clip['Value'].max(), 2),
+        round(df_clip['Value'].quantile(0.25), 2),
+        round(df_clip['Value'].quantile(0.75), 2),
+        df_clip['Value'].isna().sum()
+    ]
+    
     # Set the index for better readability
     df_table.index = ['Mean', 'Median', 'Min', 'Max', 'Q1', 'Q3', 'NA Count']
 
