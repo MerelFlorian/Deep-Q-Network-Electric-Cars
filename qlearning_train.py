@@ -14,7 +14,7 @@ def validate_agent(test_env, test_agent, qtable):
     test_agent.q_table = qtable
     while not done:
         action = test_agent.choose_action(state)  # Choose action based on policy
-        state, reward, done, _ = test_env.step(action)
+        state, reward, done, _, _ = test_env.step(action)
         total_rewards += reward
 
     return total_rewards
@@ -22,7 +22,7 @@ def validate_agent(test_env, test_agent, qtable):
 # Environment and Agent Initialization
 env = Electric_Car("data/train.xlsx")
 state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
-action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)
+action_bins = np.linspace(-25, 25, 500)  # Discretize actions (buy/sell amounts)
 agent = QLearningAgent(state_bins, action_bins)
 
 # Load validation data into the environment
@@ -38,14 +38,14 @@ best_battery_levels = 0
 validation_rewards = []
 
 for episode in range(num_episodes):
-    state = env.observation()
+    state = env.reset()
     done = False
     total_reward = 0
     battery_levels = []
 
     while not done:
         action = agent.choose_action(state)
-        next_state, reward, terminated, truncated, info = env.step(action)
+        next_state, reward, done, _, _ = env.step(action)
         if not done:
             agent.update(state, action, reward, next_state)
             battery_levels.append(env.battery_level)

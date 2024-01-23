@@ -3,10 +3,8 @@ import torch
 import torch.optim as optim
 from gym import Env
 from ElectricCarEnv import Electric_Car
-import random
 import numpy as np
 import optuna
-import pandas as pd
 import sys
 
 class LSTM_PolicyNetwork(nn.Module):
@@ -119,29 +117,32 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
 
         while not done:
             # Prepare the sequence of states
-            states.append(torch.from_numpy(state).float())
             if len(states) < sequence_length:
-                continue  # Skip until we have enough states for a full sequence
+                next_state, reward, done, _, _ = env.step(0)
+            else:
+                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
 
-            state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-
-            # Policy network forward pass
-            # Otherwise use the policy network to predict the next action
-            action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
-            normal_dist = torch.distributions.Normal(action_mean, action_std)
-            # Sample an action from the normal distribution
-            sampled_action = normal_dist.sample()
-            # Generate noise to encourage exploration
-            noise = np.random.normal(0, noise_std, size=sampled_action.shape)
-            # Add the noise to the action
-            action = sampled_action + noise
-            log_prob = normal_dist.log_prob(action).sum(axis=-1)  # Sum needed if action space is multi-dimensional
-
-            next_state, reward, done, _, _ = env.step(action.item())
-            rewards.append(reward)
-            log_probs.append(log_prob)
+                # Policy network forward pass
+                # Otherwise use the policy network to predict the next action
+                action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
+                normal_dist = torch.distributions.Normal(action_mean, action_std)
+                # Sample an action from the normal distribution
+                sampled_action = normal_dist.sample()
+                # Generate noise to encourage exploration
+                noise = np.random.normal(0, noise_std, size=sampled_action.shape)
+                # Add the noise to the action
+                action = sampled_action + noise
+                log_prob = normal_dist.log_prob(action).sum(axis=-1)
+                # Take a step in the environment
+                next_state, reward, done, _, _ = env.step(action.item())
+                # Store the reward and log probability
+                rewards.append(reward)
+                log_probs.append(log_prob)
 
             state = next_state
+            states.append(torch.from_numpy(state).float())
+            if len(states) < sequence_length:
+                continue
 
         # Compute the returns for the episode
         returns = compute_returns(normalize_rewards(rewards), gamma)
