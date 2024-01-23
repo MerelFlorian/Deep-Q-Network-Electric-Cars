@@ -73,24 +73,22 @@ def objective(trial: optuna.Trial) -> float:
         float: The evaluation metric.
     """
     # Define the hyperparameters using the trial object
-    lr = trial.suggest_loguniform('lr', 1e-5, 9e-3)
-    gamma = trial.suggest_float('gamma', 0.01, 0.6)
+    lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
+    gamma = trial.suggest_float('gamma', 0.01, 0.9)
     noise = trial.suggest_float('noise_std', 0.01, 25)
-    noise_decay = trial.suggest_float('noise_decay', 0.8, 1)
+    noise_decay = trial.suggest_float('noise_decay', 0.8, 0.999)
     hidden_size = trial.suggest_categorical('hidden_size', [32, 48, 64, 128])
-    clipping = trial.suggest_int('clipping', 1, 10)
-    layers = trial.suggest_categorical('lstm_layers', [2, 3])
+    clipping = trial.suggest_int('clipping', 1, 15)
     sequence_length = trial.suggest_int('sequence_length', 3, 48)
 
     # Create a new model with these hyperparameters
-    policy_network = LSTM_PolicyNetwork(env.observation_space.shape[0], env.action_space.shape[0], hidden_size, layers)
-
+    policy_network = LSTM_PolicyNetwork(8, 1, hidden_size, 1)
     # Train the model and return the evaluation metric
-    total_reward = train_policy_gradient(env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
+    total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
     return -total_reward
 
 
-def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNetwork, episodes = 7, lr = 0.0007, gamma = 0, 
+def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNetwork, episodes = 20, lr = 0.0007, gamma = 0, 
                           noise_std = 0.1, noise_decay = 0.9, sequence_length=7, clipping = 4, save = False):
     """ Trains a policy network using the policy gradient algorithm.
 
@@ -182,14 +180,13 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
 
             print(f"Validation reward: {total_reward}")
 
-            if save:
-                if episode == 0:
+            if episode == 0:
+                best_reward = total_reward
+            else:
+                if total_reward > best_reward:
                     best_reward = total_reward
-                else:
-                    if total_reward > best_reward:
-                        best_reward = total_reward
-                        if best_reward > 0:
-                            torch.save(policy_network.state_dict(), "models/pg.pth")
+                    if best_reward > 0 and save:
+                        torch.save(policy_network.state_dict(), "models/pg.pth")
 
     print("Training complete")
     return best_reward
@@ -201,7 +198,7 @@ if __name__ == "__main__":
 
     if sys.argv[1] == 'tune':
         study = optuna.create_study()  # Create a study object
-        study.optimize(objective, n_trials=50)  # Optimize the objective over 50 trials
+        study.optimize(objective, n_trials=30)  # Optimize the objective over 50 trials
 
         print("Best trial:")
         trial = study.best_trial
@@ -211,9 +208,9 @@ if __name__ == "__main__":
             print(f"    {key}: {value}")
     elif sys.argv[1] == 'train':
         # Create a new model with the best hyperparameters
-        policy_network = LSTM_PolicyNetwork(8, 1, 48, 3)
+        policy_network = LSTM_PolicyNetwork(8, 1, 48, 1)
         # Load the best model weights
-        train_policy_gradient(env, val_env, policy_network, episodes=5, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
+        train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
     else:
         print('Invalid command line argument. Please use one of the following: tune, train')
         exit()
