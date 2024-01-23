@@ -263,8 +263,7 @@ class DQNAgent:
 
     def choose_action(self, state):
         """Returns actions for given state as per current policy."""
-        state_vector = [state[0] / 50, state[1] / 24, state[2]]  # Assuming state is a list or array
-        state_tensor = torch.FloatTensor(state_vector).unsqueeze(0)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0)
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach
             with torch.no_grad():
