@@ -58,8 +58,6 @@ def main(path: str, save_to:str) -> None:
         'Var': hourly_prices_series.rolling(window=len(hourly_prices_series), min_periods=1).var()[:len(df)],
     }
 
-    print(df)
-
     # Add the features to the DataFrame
     for feature in features:
         new_df[feature] = new_data[feature]
@@ -69,8 +67,6 @@ def main(path: str, save_to:str) -> None:
 
     # Save the DataFrame to an Excel file
     new_df.to_excel(save_to, index=False)
-
-   
 
 if __name__ == "__main__":
 
