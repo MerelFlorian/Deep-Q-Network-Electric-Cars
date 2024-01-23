@@ -4,25 +4,45 @@ import pandas as pd
 PATH = "data/train.xlsx"
 SAVE_TO = "data/features.xlsx"
 
-def main(path: str) -> None:
+def compute_ma(data: dict, df: pd.DataFrame, min: int, max: int) -> dict:
+    """ Computes the moving average of the data and adds it to a dictionary of columns.
+
+    Args:
+        data (dict): The dictionary containing the columns to compute the moving average
+        df (pd.DataFrame): The dataframe to compute the moving averages from.
+        min (int): The minimum number of days to compute the moving average from.
+        max (int): The maximum number of days to compute the moving average from.
+
+    Returns:
+        dict: The dictionary containing the moving averages.
+    """
+    # Flatten the DataFrame into a single Series
+    flat_series = df.drop('date', axis=1).values.flatten()
+
+    for i in range(min, max):
+        # Compute the rolling average with the specified window
+        ma = pd.Series(flat_series).rolling(window=i, min_periods=1).mean()
+        ema = pd.Series(flat_series).ewm(span=i, adjust=False).mean()
+        
+        # Store the results in the dictionary
+        data[f'{i}MA'] = ma.values
+        data[f'{i}EMA'] = ema.values
+
+    return data
+
+def main(path: str, save_to: str) -> None:
     # Load the dataset
     df = clean_data(path)
+    new_data = {}
 
-    # Define columns for featureset
-    features = ["3MA", "4MA", "5MA", "6MA", "7MA", "8MA", "10MA", "12MA",
-                "3EMA", "4EMA", "5EMA", "6EMA", "7EMA", "8EMA", "10EMA", "12EMA",
-                "Season", "Weekend"]
-    
-    # Create an empty DataFrame with these columns
-    new_df = pd.DataFrame(columns=features)
+    # Compute the moving averages
+    new_data = compute_ma(new_data, df, 3, 13)
 
-    # Perform your calculations or manipulations here
-    # For example, let's create dummy data based on the original df
-    new_data = {
-        'Feature1': df['Column1'] * 2,  # Assuming 'Column1' exists in your original df
-        'Feature2': df['Column2'] + 5,  # Similarly, assuming 'Column2' exists
-        'Feature3': len(df['Column3'])  # And 'Column3'
-    }
+    # Create a new DataFrame
+    new_df = pd.concat(new_data.values(), axis=1)
+
+    # Save the new_df to a new excel file
+    new_df.to_excel(save_to, index=False)
 
 if __name__ == "__main__":
     main(PATH, SAVE_TO)
