@@ -15,19 +15,19 @@ import scikit_posthocs as sp
 
 
 # Functions
-def clean_data(csv_file: str) -> pd.DataFrame:
+def clean_data(file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
     Removes empty rows. Dates are converted to datetime format. Columns are renamed to H1, H2, H3.
 
     Args:
-        csv_file (str): Path to csv file
+        file (str): Path to excel file
 
     Returns:
         pd.DataFrame: Cleaned DataFrame
     """
 
     # Import data as pandas dataframe
-    df = pd.read_excel(csv_file)
+    df = pd.read_excel(file)
     # Remove all columns after 24th column
     df = df.iloc[:, :25]
     # Remove all rows with NaN values
@@ -112,7 +112,6 @@ def candlestick_format(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
                     'value': row[f'H{i}']}
             hours.append(hour)
     reshaped_df = pd.DataFrame(hours)
-    print(reshaped_df.head())
     reshaped_df.set_index('datetime', inplace=True)
 
     # Resampling based on the chosen timeframe
@@ -159,10 +158,12 @@ def candlestick(ohlcs: list, descriptions: list) -> None:
         ohlc.index = pd.DatetimeIndex(ohlc.index)
 
         # Plot candlestick chart on the current axis
-        mpf.plot(ohlc, type='candle', style='charles', ax=ax, title=f'Candlestick Chart {description}')
+        mpf.plot(ohlc, type='candle', style='charles', ax=ax)
+        ax.set_title(f'{description}')
 
     # Adjust layout and save the figure
     plt.tight_layout()
+    plt.rcParams.update({'font.size': 25})  # You can adjust the size as needed
     plt.savefig('../images/combined_candlestick_charts.png')
 
 def action_to_color(action)-> None:
@@ -471,9 +472,6 @@ def stats_season(df: pd.DataFrame)->None:
     df['season'] = df['date'].dt.month.apply(lambda x: 'winter' if x in [12, 1, 2] else 'spring' if x in [3, 4, 5] else 'summer' if x in [6, 7, 8] else 'fall')
 
     # Kruskal wallis test
-    # H0: The mean daily price is the same for all seasons
-    # H1: The mean price is not the same for all seasons
-    # alpha = 0.05
     print(stats.kruskal(df[df['season'] == 'winter']['Value'],df[df['season'] == 'fall']['Value'],df[df['season'] == 'summer']['Value'], df[df['season'] == 'spring']['Value']))
 
     # Post hoc test
@@ -520,6 +518,9 @@ def table_summary(df: pd.DataFrame) -> None:
         df['Value'].isna().sum()
     ]
 
+    # Clip dataset to 200 and add summary statistics
+    
+
     # Set the index for better readability
     df_table.index = ['Mean', 'Median', 'Min', 'Max', 'Q1', 'Q3', 'NA Count']
 
@@ -528,7 +529,3 @@ def table_summary(df: pd.DataFrame) -> None:
 
     # Save the table to a csv file
     df_table.to_csv('../data/summary_statistics.csv')
-
-
-        
-
