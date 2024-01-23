@@ -80,7 +80,7 @@ def objective(trial: optuna.Trial) -> float:
     sequence_length = trial.suggest_int('sequence_length', 3, 48)
 
     # Create a new model with these hyperparameters
-    policy_network = LSTM_PolicyNetwork(8, 1, hidden_size, 1)
+    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 1)
     # Train the model and return the evaluation metric
     total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
     return -total_reward
@@ -208,8 +208,9 @@ if __name__ == "__main__":
         for key, value in trial.params.items():
             print(f"    {key}: {value}")
     elif sys.argv[1] == 'train':
+        print(len(env.state))
         # Create a new model with the best hyperparameters
-        policy_network = LSTM_PolicyNetwork(8, 1, 48, 1)
+        policy_network = LSTM_PolicyNetwork(len(env.state), 1, 48, 1)
         # Load the best model weights
         train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
     else:

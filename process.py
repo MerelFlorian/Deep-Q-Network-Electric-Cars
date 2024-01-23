@@ -58,7 +58,7 @@ def weekend(day: int) -> int:
     else:
         return 0
     
-def create_features(path: str) -> None:
+def create_features(path: str, save_to="features.xlsx") -> None:
     """ Creates a new excel file with features extracted from the dataset.
         NOTE: This function does not create "polluting" features like global statistics.
 
@@ -77,16 +77,6 @@ def create_features(path: str) -> None:
 
     date_df = df[['date', 'Day', 'Month']]
 
-    # Define columns for featureset
-    features = ["3MA", "4MA", "5MA", "6MA", "7MA", "8MA", "10MA", "12MA",
-                "3EMA", "4EMA", "5EMA", "6EMA", "7EMA", "8EMA", "10EMA", "12EMA",
-                "Season", "Weekend"]
-    
-    # 'Mean', 'Median', 'Min', 'Max', 'Std', 'Var'
-
-    # Create an empty DataFrame with these columns
-    new_df = pd.DataFrame(columns=features)
-
     # Concatenate all hourly prices into a single series for rolling calculations
     df = df.drop(columns=['date', 'Day', 'Month']).values.flatten()
 
@@ -99,10 +89,13 @@ def create_features(path: str) -> None:
     new_data = compute_stats(new_data, df, 3, 13)
 
     # Assign the new_data to the new_df
-    new_df = new_df.assign(**new_data)
+    new_df = pd.DataFrame(new_data)
 
     # Drop the NaN values
     new_df = new_df.dropna()
 
     # Save the new_df to a new excel file
-    new_df.to_excel("features.xlsx", index=False)
+    new_df.to_excel(save_to, index=False)
+
+# Example usage
+# create_features('data/validate.xlsx', 'f_val.xlsx')
