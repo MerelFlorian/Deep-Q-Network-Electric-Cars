@@ -12,7 +12,7 @@ class Electric_Car(gym.Env):
         self.test_data = pd.read_excel(path_to_test_data)
         self.price_values = self.test_data.iloc[:, 1:25].to_numpy()
         self.timestamps = self.test_data['PRICES']
-        self.state = np.empty(8)
+        self.state = np.empty(7)
 
         # Battery characteristics
         self.battery_capacity = 50  # kWh
