@@ -112,8 +112,8 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     elif sys.argv[1] == 'ema':
         return ema(), "EMA"
     elif sys.argv[1] =="DQN":
-        state_size = 3  
-        action_size = 5000 
+        state_size = 8  
+        action_size = 100
         test_agent = DQNAgent(state_size, action_size)
         test_agent.model = np.load('models/dqn_model.pth')
         return test_agent, "DQN"
