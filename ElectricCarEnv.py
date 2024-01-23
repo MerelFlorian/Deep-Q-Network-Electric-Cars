@@ -10,13 +10,13 @@ class Electric_Car(gym.Env):
         self.continuous_action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
         # Define the test data
         self.test_data = pd.read_excel(path_to_test_data)
-
+  
         # ADDED to code: feature set
         self.features = pd.read_excel(path_to_features)
 
         self.price_values = self.test_data.iloc[:, 1:25].to_numpy()
         self.timestamps = self.test_data['PRICES']
-        self.state = np.empty(8)
+        self.state = np.empty(8 + self.features.shape[1])
 
         # Battery characteristics
         self.battery_capacity = 50  # kWh
@@ -140,10 +140,7 @@ class Electric_Car(gym.Env):
             [battery_level, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
         
-        # ADDED to code: features
-        # Get the row of features for the current counter
-        row = self.features.iloc[self.counter]
+        # ADDED extra features: MAs 3-12, EMAs 3-12, Expanding Mean/Median/Std/Var/Min/Max
+        self.state = np.concatenate((self.state, self.features.iloc[self.counter]))
 
-        # Add the features to the state
-        self.state = np.concatenate((self.state, row))
         return self.state

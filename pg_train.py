@@ -165,14 +165,19 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
 
         print(f"Episode {episode + 1}/{episodes}: Total training reward: {sum(rewards)}") 
 
+        states = []
+
         # Validate the model
         with torch.no_grad():
             state = val_env.reset()
             done = False
             total_reward = 0
             while not done:
-                state = torch.from_numpy(state).float().unsqueeze(0).unsqueeze(0)
-                action_mean, action_std, hidden_state = policy_network(state, hidden_state)
+                if len(states) < sequence_length:
+                    states.append(torch.from_numpy(state).float())
+                    continue
+                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)
+                action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
                 normal_dist = torch.distributions.Normal(action_mean, action_std)
                 action = normal_dist.sample()
                 next_state, reward, done, _, _ = val_env.step(action.item())
@@ -194,8 +199,8 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
 
 if __name__ == "__main__":
     # Create the environments
-    env = Electric_Car("data/train.xlsx")
-    val_env = Electric_Car("data/validate.xlsx")
+    env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
+    val_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 
     if sys.argv[1] == 'tune':
         study = optuna.create_study()  # Create a study object
@@ -208,7 +213,6 @@ if __name__ == "__main__":
         for key, value in trial.params.items():
             print(f"    {key}: {value}")
     elif sys.argv[1] == 'train':
-        print(len(env.state))
         # Create a new model with the best hyperparameters
         policy_network = LSTM_PolicyNetwork(len(env.state), 1, 48, 1)
         # Load the best model weights
