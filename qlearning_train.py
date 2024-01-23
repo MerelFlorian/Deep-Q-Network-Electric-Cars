@@ -38,14 +38,14 @@ best_battery_levels = 0
 validation_rewards = []
 
 for episode in range(num_episodes):
-    state = env.reset()
+    state = env.observation()
     done = False
     total_reward = 0
     battery_levels = []
 
     while not done:
         action = agent.choose_action(state)
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, terminated, truncated, info = env.step(action)
         if not done:
             agent.update(state, action, reward, next_state)
             battery_levels.append(env.battery_level)

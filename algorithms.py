@@ -26,10 +26,10 @@ class QLearningAgent:
         """	
         Discretizes the state into a tuple of indices.
         """
-        battery, time, availability = state
-        battery_idx = np.digitize(battery, self.state_bins[0]) - 1
-        time_idx = np.digitize(time, self.state_bins[1]) - 1
-        availability_idx = int(availability)
+        battery_level, _, hour, available , _, _, _, _ = state
+        battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
+        time_idx = np.digitize(hour, self.state_bins[1]) - 1
+        availability_idx = int(available)
         return battery_idx, time_idx, availability_idx
 
     def discretize_action(self, action):
@@ -74,8 +74,8 @@ class QLearningAgent:
         Checks if the state is valid.
         """
         # Implement logic to check if state is valid
-        battery, time, availability = state
-        return 0 <= battery <= self.max_battery and 1 <= time <= 24 and 0 <= availability <= 1
+        battery_level, price, hour, available , day_of_week, day_of_year, month, year = state
+        return 0 <= battery_level <= self.max_battery and 1 <= hour <= 24 and 0 <= available <= 1
     
 class EMA:
   """Implements an exponential moving average cross strategy
@@ -119,14 +119,6 @@ class EMA:
       else:
           new = price * (2 / (window + 1)) + history[-1] * (1 - (2 / (window + 1)))
           return new
-  
-  def percent_difference(self) -> float:
-      """ Calculates the percent difference between the short and long EMAs.
-
-      Returns:
-          float: The percent difference between the short and long EMAs.
-      """
-      return abs((self.short_ema - self.long_ema)) / self.long_ema
 
   def choose_action(self, state: list) -> float:
       """ Chooses an action for the current time step.
@@ -144,23 +136,22 @@ class EMA:
       # Append the EMAs to the history
       self.short_ema_history = np.append(self.short_ema_history, self.short_ema)
       self.long_ema_history = np.append(self.long_ema_history, self.long_ema)
-      
       # Choose the action
       # If the long EMA has not been calculated yet buy the max amount possible
       if len(self.long_ema_history) < self.len_long and state[2] == 4:
-          self.action = -(self.max_battery - state[0])
+          self.action = (self.max_battery - state[0])
       # If the short EMA is below the long EMA, buy
-      elif self.short_ema < self.long_ema:
+      elif self.short_ema < self.long_ema and len(self.long_ema_history) >= self.len_long:
           self.ls_cross = 0
           self.sl_cross += 1
           if self.sl_cross >= 1 and 3 <= state[2] <= 6:
-            self.action = -(self.max_battery - state[0]) / 8.2
+            self.action = (self.max_battery - state[0]) / 8.2
       # If the short EMA is above the long EMA, sell
-      elif self.short_ema > self.long_ema:
+      elif self.short_ema > self.long_ema and len(self.long_ema_history) >= self.len_long:
           self.sl_cross = 0
           self.ls_cross += 1
           if self.ls_cross >= 1:
-              self.action = state[0]
+              self.action = -state[0] / 2
       # Otherwise, do nothing
       else:
           self.action = 0
@@ -186,7 +177,7 @@ class BuyLowSellHigh:
       self.counter = 0
       self.s_counter = 0
   
-  def choose_action(self, price: float,  state: list) -> float:
+  def choose_action(self, state: list) -> float:
       """ Chooses an action for the current time step.
 
       Args:
@@ -203,19 +194,19 @@ class BuyLowSellHigh:
       # Buy in the morning
       if 3 <= state[2] <= 6:
           # If it is a new day, buy one seventh of the max battery
-          self.action -= (self.max_battery - state[0]) / 8.2
+          self.action += (self.max_battery - state[0]) / 8.2
           # Append the action to the history
-          self.buy = price
+          self.buy = state[1]
       # Sell in the evening
-      elif self.buy and price >= self.buy:
-          if state[3]:
+      elif self.buy and state[1] >= 2 * self.buy:
+          if state[6]:
               self.counter += 1
               if self.counter > 4:
-                  self.action = state[0]
+                  self.action = -state[0]
                   if state[0] - (25 / 0.9) < 1:
                       self.counter = 0
           else:
-              self.action = state[0]
+              self.action = -state[0]
           
       return self.action
   
@@ -272,8 +263,7 @@ class DQNAgent:
 
     def choose_action(self, state):
         """Returns actions for given state as per current policy."""
-        state_vector = [state[0] / 50, state[1] / 24, state[2]]  # Assuming state is a list or array
-        state_tensor = torch.FloatTensor(state_vector).unsqueeze(0)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0)
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach
             with torch.no_grad():
