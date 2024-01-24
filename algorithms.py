@@ -189,22 +189,26 @@ class BuyLowSellHigh:
       # Reset the day boolean if it is a new day
       self.action = 0   
 
-      # Choose the action 
-
-      # Buy in the morning
+      # Buy in the morning between 3 and 6
       if 3 <= state[2] <= 6:
           # If it is a new day, buy one seventh of the max battery
           self.action += (self.max_battery - state[0]) / 8.2
-          # Append the action to the history
+          # Append the action to the history (price)
           self.buy = state[1]
-      # Sell in the evening
-      elif self.buy and state[1] >= 2 * self.buy:
-          if state[6]:
+      # Sell in the evening if the price is greater than  twice the buy price
+      elif self.buy and state[1] >= 2 * self.buy: 
+          # Check if car available
+          if state[7]:
+              # Add hour to counter
               self.counter += 1
+              # If the counter is greater than 4, sell
               if self.counter > 4:
+                  # Set action to sell
                   self.action = -state[0]
+                  # If battery level is less than 25/0.9, reset the counter
                   if state[0] - (25 / 0.9) < 1:
                       self.counter = 0
+          # If car not available, sell
           else:
               self.action = -state[0]
           
