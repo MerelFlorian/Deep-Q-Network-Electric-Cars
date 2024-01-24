@@ -192,6 +192,8 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     # Convert defaultdict to DataFrame and limit the data to 3 days
     df = pd.DataFrame(df).head(72)
 
+    # Combine date and hour to datetime and add 30 mins to each hour
+    df['date'] = df['date'] + pd.to_timedelta(df['hour'] - 1, unit='H') + pd.to_timedelta(30, unit='m')
     # Ensure the 'date' column is in datetime format
     df['date'] = pd.to_datetime(df['date'])
 
@@ -273,7 +275,6 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     """
     Plot the cumulative rewards for each agent
     """
-    
     # Convert dates to days since the start for plotting
     days_ql = [(date - log_env_ql['date'][0]).days for date in log_env_ql['date']]
     days_blsh = [(date - log_env_blsh['date'][0]).days for date in log_env_blsh['date']]
