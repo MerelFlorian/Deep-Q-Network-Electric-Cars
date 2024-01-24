@@ -17,7 +17,7 @@ def objective(trial):
     activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
     state_size = 36
-    episodes = 10
+    episodes = 50
 
     activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
 

@@ -213,23 +213,26 @@ class BuyLowSellHigh:
 class QNetwork(nn.Module):
     def __init__(self, state_size, action_size, activation_fn=torch.relu):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(state_size, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.fc4 = nn.Linear(32, action_size)
+        self.fc1 = nn.Linear(state_size, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 32)
+        self.fc5 = nn.Linear(32, action_size)
         self.activation_fn = activation_fn
 
         # Apply He initialization
         init.kaiming_normal_(self.fc1.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
         init.kaiming_normal_(self.fc2.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
         init.kaiming_normal_(self.fc3.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
-        init.kaiming_normal_(self.fc4.weight, mode='fan_in', nonlinearity='linear')
+        init.kaiming_normal_(self.fc4.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
+        init.kaiming_normal_(self.fc5.weight, mode='fan_in', nonlinearity='linear')
 
     def forward(self, state):
         x = self.activation_fn(self.fc1(state))
         x = self.activation_fn(self.fc2(x))
         x = self.activation_fn(self.fc3(x))
-        return self.fc4(x)
+        x = self.activation_fn(self.fc4(x))
+        return self.fc5(x)
 
 
 class DQNAgent:
@@ -249,7 +252,7 @@ class DQNAgent:
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.batch_size = 64
+        self.batch_size = 48
 
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
