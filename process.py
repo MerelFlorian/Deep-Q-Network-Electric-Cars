@@ -15,9 +15,14 @@ def compute_stats(data: dict, df: pd.DataFrame, min: int, max: int) -> dict:
         dict: The dictionary containing the moving averages.
     """
     for i in range(min, max):
-        # Compute the rolling average with the specified window
-        data[f'{i}MA'] = pd.Series(df).rolling(window=i, min_periods=1).mean()
+        # Compute the exponential moving averages with the specified span
         data[f'{i}EMA'] = pd.Series(df).ewm(span=i, adjust=False).mean()
+
+    for n in [50, 100, 200]:
+        # Compute the moving averages with the specified window
+        data[f'{n}MA'] = pd.Series(df).rolling(window=n, min_periods=1).mean()
+        data[f'{n * 4}MA'] = pd.Series(df).rolling(window=n*4, min_periods=1).mean()
+        data[f'{n * 24}MA'] = pd.Series(df).rolling(window=n*24, min_periods=1).mean()
     
     # Compute the expanding average
     data['ExMA'] = pd.Series(df).expanding(min_periods=1).mean()
@@ -103,4 +108,4 @@ def create_features(path: str, save_to="features.xlsx") -> None:
     new_df.to_excel(save_to, index=False)
 
 # Example usage
-create_features('data/train.xlsx', 'data/f_train.xlsx')
+create_features('data/validate.xlsx', 'data/f_val.xlsx')
