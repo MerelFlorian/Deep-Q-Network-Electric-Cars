@@ -189,22 +189,26 @@ class BuyLowSellHigh:
       # Reset the day boolean if it is a new day
       self.action = 0   
 
-      # Choose the action 
-
-      # Buy in the morning
+      # Buy in the morning between 3 and 6
       if 3 <= state[2] <= 6:
           # If it is a new day, buy one seventh of the max battery
           self.action += (self.max_battery - state[0]) / 8.2
-          # Append the action to the history
+          # Append the action to the history (price)
           self.buy = state[1]
-      # Sell in the evening
-      elif self.buy and state[1] >= 2 * self.buy:
-          if state[6]:
+      # Sell in the evening if the price is greater than  twice the buy price
+      elif self.buy and state[1] >= 2 * self.buy: 
+          # Check if car available
+          if state[7]:
+              # Add hour to counter
               self.counter += 1
+              # If the counter is greater than 4, sell
               if self.counter > 4:
+                  # Set action to sell
                   self.action = -state[0]
+                  # If battery level is less than 25/0.9, reset the counter
                   if state[0] - (25 / 0.9) < 1:
                       self.counter = 0
+          # If car not available, sell
           else:
               self.action = -state[0]
           
@@ -213,23 +217,26 @@ class BuyLowSellHigh:
 class QNetwork(nn.Module):
     def __init__(self, state_size, action_size, activation_fn=torch.relu):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(state_size, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.fc4 = nn.Linear(32, action_size)
+        self.fc1 = nn.Linear(state_size, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 32)
+        self.fc5 = nn.Linear(32, action_size)
         self.activation_fn = activation_fn
 
         # Apply He initialization
         init.kaiming_normal_(self.fc1.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
         init.kaiming_normal_(self.fc2.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
         init.kaiming_normal_(self.fc3.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
-        init.kaiming_normal_(self.fc4.weight, mode='fan_in', nonlinearity='linear')
+        init.kaiming_normal_(self.fc4.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
+        init.kaiming_normal_(self.fc5.weight, mode='fan_in', nonlinearity='linear')
 
     def forward(self, state):
         x = self.activation_fn(self.fc1(state))
         x = self.activation_fn(self.fc2(x))
         x = self.activation_fn(self.fc3(x))
-        return self.fc4(x)
+        x = self.activation_fn(self.fc4(x))
+        return self.fc5(x)
 
 
 class DQNAgent:
@@ -249,7 +256,7 @@ class DQNAgent:
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.batch_size = 64
+        self.batch_size = 48
 
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
