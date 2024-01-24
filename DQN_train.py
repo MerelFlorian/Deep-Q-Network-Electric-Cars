@@ -14,16 +14,17 @@ def objective(trial):
     # Define the hyperparameter search space using the trial object
     lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
     gamma = trial.suggest_float("gamma", 0.5, 0.99)
-    activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
+    #activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
+    batch_size = trial.suggest_categorical("batch_size", [24, 48, 168]) # 1 day, 2 days, 1 week
     state_size = 36
     episodes = 50
 
-    activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
+    #activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
-    agent = DQNAgent(state_size, action_size, learning_rate=lr, gamma=gamma, activation_fn=activation_fn)
+    agent = DQNAgent(state_size, action_size, learning_rate=lr, gamma=gamma, activation_fn=activation_fn, batch_size=batch_size)
 
     # Create the validation environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")

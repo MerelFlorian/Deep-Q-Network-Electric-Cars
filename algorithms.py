@@ -243,20 +243,22 @@ class DQNAgent:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, activation_fn=torch.relu):
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=1000)
         self.gamma = gamma  # discount factor
         self.learning_rate = learning_rate
-        self.model = QNetwork(state_size, action_size, activation_fn)
-        self.target_model = QNetwork(state_size, action_size, activation_fn)
-
+        # self.model = QNetwork(state_size, action_size, activation_fn)
+        # self.target_model = QNetwork(state_size, action_size, activation_fn)
+        self.model = LSTM_PolicyNetwork(state_size, action_size, hidden_size=256, lstm_layers=1)
+        self.target_model = LSTM_PolicyNetwork(state_size, action_size, hidden_size=256, lstm_layers=1)
+        
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.batch_size = 48
+        self.batch_size = batch_size
 
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
@@ -352,3 +354,31 @@ class DQNAgent:
         Function to save the model's weights.
         """
         torch.save(self.model.state_dict(), name)
+
+class LSTM_PolicyNetwork(nn.Module):
+    def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
+        super(LSTM_PolicyNetwork, self).__init__()
+        self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
+        self.fc_mean = nn.Linear(hidden_size, action_size)
+        self.fc_log_std = nn.Linear(hidden_size, action_size)
+        
+
+    def forward(self, state, hidden_state=None):
+        # state shape: (batch, sequence, features)
+        if hidden_state is None:
+            lstm_out, hidden_state = self.lstm(state)
+        else:
+            lstm_out, hidden_state = self.lstm(state, hidden_state)
+        lstm_out = lstm_out[:, -1, :]  # Take the output of the last time step
+        action_mean = self.fc_mean(lstm_out)  # Linear layer for mean
+        action_log_std = self.fc_log_std(lstm_out)  # Linear layer for log_std
+        return action_mean, action_log_std.exp(), hidden_state
+
+
+    def init_hidden(self, batch_size):
+        # Initializes the hidden state
+        # This depends on the number of LSTM layers and whether it's bidirectional
+        weight = next(self.parameters()).data
+        hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_(),
+                  weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_())
+        return hidden

@@ -6,34 +6,8 @@ from ElectricCarEnv import Electric_Car
 import numpy as np
 import optuna
 import sys
+from algorithms import LSTM_PolicyNetwork
 
-class LSTM_PolicyNetwork(nn.Module):
-    def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
-        super(LSTM_PolicyNetwork, self).__init__()
-        self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
-        self.fc_mean = nn.Linear(hidden_size, action_size)
-        self.fc_log_std = nn.Linear(hidden_size, action_size)
-        
-
-    def forward(self, state, hidden_state=None):
-        # state shape: (batch, sequence, features)
-        if hidden_state is None:
-            lstm_out, hidden_state = self.lstm(state)
-        else:
-            lstm_out, hidden_state = self.lstm(state, hidden_state)
-        lstm_out = lstm_out[:, -1, :]  # Take the output of the last time step
-        action_mean = self.fc_mean(lstm_out)  # Linear layer for mean
-        action_log_std = self.fc_log_std(lstm_out)  # Linear layer for log_std
-        return action_mean, action_log_std.exp(), hidden_state
-
-
-    def init_hidden(self, batch_size):
-        # Initializes the hidden state
-        # This depends on the number of LSTM layers and whether it's bidirectional
-        weight = next(self.parameters()).data
-        hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_(),
-                  weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_())
-        return hidden
     
 def normalize_rewards(rewards):
     rewards = np.array(rewards)
