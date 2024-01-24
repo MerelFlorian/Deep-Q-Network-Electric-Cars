@@ -5,14 +5,18 @@ import pandas as pd
 
 class Electric_Car(gym.Env):
 
-    def __init__(self, path_to_test_data=str):
+    def __init__(self, path_to_test_data=str, path_to_features=str):
         # Define a continuous action space, -1 to 1. (You can discretize this later!)
         self.continuous_action_space = gym.spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32)
         # Define the test data
         self.test_data = pd.read_excel(path_to_test_data)
+  
+        # ADDED to code: feature set
+        self.features = pd.read_excel(path_to_features)
+
         self.price_values = self.test_data.iloc[:, 1:25].to_numpy()
         self.timestamps = self.test_data['PRICES']
-        self.state = np.empty(7)
+        self.state = np.empty(8 + self.features.shape[1])
 
         # Battery characteristics
         self.battery_capacity = 50  # kWh
@@ -131,8 +135,12 @@ class Electric_Car(gym.Env):
         day_of_year = self.timestamps[self.day - 1].dayofyear  # January 1st = 1, December 31st = 365
         month = self.timestamps[self.day - 1].month  # January = 1, December = 12
         year = self.timestamps[self.day - 1].year
+
         self.state = np.array(
             [battery_level, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
+        
+        # ADDED extra features: MAs 3-12, EMAs 3-12, Expanding Mean/Median/Std/Var/Min/Max
+        self.state = np.concatenate((self.state, self.features.iloc[self.counter]))
 
         return self.state
