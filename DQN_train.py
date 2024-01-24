@@ -16,17 +16,17 @@ def objective(trial):
     gamma = trial.suggest_float("gamma", 0.5, 0.99)
     activation_fn_name = trial.suggest_categorical("activation_fn", ["relu", "tanh"])
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
-    state_size = 8
+    state_size = 36
     episodes = 10
 
     activation_fn = torch.relu if activation_fn_name == "relu" else torch.tanh
 
     # Create the environment and agent
-    env = Electric_Car("data/train.xlsx")
+    env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
     agent = DQNAgent(state_size, action_size, learning_rate=lr, gamma=gamma, activation_fn=activation_fn)
 
     # Create the validation environment
-    test_env = Electric_Car("data/validate.xlsx")
+    test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 
     # Train the agent and get validation reward
     validation_reward = train_DQN(env, agent, test_env, episodes, model_save_path=f"models/DQN_version_2/lr:{lr}_gamma:{gamma}_act:{activation_fn}_actsize:{action_size}.pth")
@@ -53,7 +53,7 @@ def train_DQN(env, agent, test_env, episodes, model_save_path):
 
     total_train_rewards = []
     total_val_rewards = []
-    state_size = 8
+    state_size = 36
 
     for episode in range(episodes):
         state = env.reset()
