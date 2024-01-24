@@ -46,12 +46,12 @@ def objective(trial: optuna.Trial) -> float:
     """
     # Define the hyperparameters using the trial object
     lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
-    gamma = trial.suggest_float('gamma', 0.01, 0.9)
-    noise = trial.suggest_float('noise_std', 0.01, 25)
-    noise_decay = trial.suggest_float('noise_decay', 0.8, 0.999)
-    hidden_size = trial.suggest_categorical('hidden_size', [32, 48, 64, 128])
-    clipping = trial.suggest_int('clipping', 1, 15)
-    sequence_length = trial.suggest_int('sequence_length', 3, 48)
+    gamma = trial.suggest_float('gamma', 0.01, 0.3)
+    noise = trial.suggest_float('noise_std', 2, 25)
+    noise_decay = trial.suggest_float('noise_decay', 0.7, 0.999)
+    hidden_size = trial.suggest_categorical('hidden_size', [128, 160, 192, 256])
+    clipping = trial.suggest_int('clipping', 1, 10)
+    sequence_length = trial.suggest_int('sequence_length', 1, 48)
 
     # Create a new model with these hyperparameters
     policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 1)
@@ -175,22 +175,25 @@ if __name__ == "__main__":
     # Create the environments
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
     val_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
+    if len(sys.argv) == 2:
+        if sys.argv[1] == 'tune':
+            study = optuna.create_study()  # Create a study object
+            study.optimize(objective, n_trials=50)  # Optimize the objective over 50 trials
 
-    if sys.argv[1] == 'tune':
-        study = optuna.create_study()  # Create a study object
-        study.optimize(objective, n_trials=30)  # Optimize the objective over 50 trials
-
-        print("Best trial:")
-        trial = study.best_trial
-        print(f"  Value: {-trial.value}")
-        print("  Params: ")
-        for key, value in trial.params.items():
-            print(f"    {key}: {value}")
-    elif sys.argv[1] == 'train':
-        # Create a new model with the best hyperparameters
-        policy_network = LSTM_PolicyNetwork(len(env.state), 1, 48, 1)
-        # Load the best model weights
-        train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
+            print("Best trial:")
+            trial = study.best_trial
+            print(f"  Value: {-trial.value}")
+            print("  Params: ")
+            for key, value in trial.params.items():
+                print(f"    {key}: {value}")
+        elif sys.argv[1] == 'train':
+            # Create a new model with the best hyperparameters
+            policy_network = LSTM_PolicyNetwork(len(env.state), 1, 48, 1)
+            # Load the best model weights
+            train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
+        else:
+            print('Invalid command line argument. Please use one of the following: tune, train')
+            exit()
     else:
-        print('Invalid command line argument. Please use one of the following: tune, train')
+        print('Missing line argument. Correct usage: python pg_train.py <tune/train>')
         exit()
