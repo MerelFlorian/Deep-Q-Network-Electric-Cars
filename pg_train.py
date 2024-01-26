@@ -46,15 +46,15 @@ def objective(trial: optuna.Trial) -> float:
     """
     # Define the hyperparameters using the trial object
     lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
-    gamma = trial.suggest_float('gamma', 0.01, 0.3)
-    noise = trial.suggest_float('noise_std', 2, 25)
-    noise_decay = trial.suggest_float('noise_decay', 0.7, 0.999)
-    hidden_size = trial.suggest_categorical('hidden_size', [128, 160, 192, 256])
+    gamma = trial.suggest_float('gamma', 0.01, 0.7)
+    noise = trial.suggest_float('noise_std', 1, 12)
+    noise_decay = trial.suggest_float('noise_decay', 0.6, 0.85)
+    hidden_size = trial.suggest_categorical('hidden_size', [48, 64, 96, 128, 160, 192, 224, 256])
     clipping = trial.suggest_int('clipping', 1, 10)
-    sequence_length = trial.suggest_int('sequence_length', 1, 48)
+    sequence_length = trial.suggest_int('sequence_length', 1, 24)
 
     # Create a new model with these hyperparameters
-    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 1).to("mps")
+    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 2).to("mps")
     # Train the model and return the evaluation metric
     total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
     return -total_reward

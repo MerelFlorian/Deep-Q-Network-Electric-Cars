@@ -404,10 +404,10 @@ class LSTM_PolicyNetwork(nn.Module):
         return action_mean, action_log_std.exp(), hidden_state
 
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, device, batch_size):
         # Initializes the hidden state
         # This depends on the number of LSTM layers and whether it's bidirectional
         weight = next(self.parameters()).data
-        hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_(),
-                  weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_())
+        hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_().to(device),
+                  weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_().to(device))
         return hidden
