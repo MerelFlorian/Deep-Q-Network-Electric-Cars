@@ -359,22 +359,23 @@ class LSTM_DQN(nn.Module):
         self.lstm_layers = lstm_layers
 
     def forward(self, state, hidden_state=None):
-
+        # If the state is 2D (no batch dimension), add a batch dimension
         if state.dim() == 2:
             state = state.unsqueeze(0)  # Add batch dimension
 
         batch_size = state.size(0)
-
+        
+        # Initialize hidden state if not provided
         if hidden_state is None:
             hidden_state = self.init_hidden(batch_size)
-        
+        else:
+            # Adjust the hidden state batch size if necessary
+            hidden_state = (hidden_state[0][:, :batch_size, :], hidden_state[1][:, :batch_size, :])
+
         lstm_out, hidden_state = self.lstm(state, hidden_state)
         lstm_out = lstm_out[:, -1, :]  # Take the output of the last time step
         action_values = self.fc(lstm_out)
         
-        # Reshape action_values to match the batch size and number of actions
-        action_values = action_values.view(batch_size, -1)
-
         return action_values, hidden_state
 
     def init_hidden(self, batch_size):
