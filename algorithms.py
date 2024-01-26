@@ -273,13 +273,23 @@ class DQNAgent:
     def choose_action(self, state_sequence, hidden_state=None):
         """Returns actions for given sequence of states as per current policy."""
         
+        # Discretize the action space into 100 steps
+        action_values = np.linspace(-1, 1, self.action_size)
+
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
                 # Model forward pass with sequence of states
                 q_values, hidden_state = self.model(state_sequence, hidden_state)
-                return np.argmax(q_values.cpu().data.numpy()), hidden_state
+
+                # Get the index of the action with the highest Q-value
+                action_index = np.argmax(q_values.cpu().data.numpy())
+
+                # Return the action with the highest Q-value
+                return action_values[action_index], hidden_state
+        
         else:  # Exploration
-            return random.randrange(self.action_size), hidden_state
+            action_index = random.randrange(self.action_size)
+            return action_values[action_index], hidden_state
         
     def replay(self):
         """

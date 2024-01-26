@@ -135,7 +135,7 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=20)  
+    study.optimize(objective, n_trials=50)  
 
     print("Best trial:")
     trial = study.best_trial
