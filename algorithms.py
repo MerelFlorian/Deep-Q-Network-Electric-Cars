@@ -258,8 +258,8 @@ class DQNAgent:
         self.learning_rate = learning_rate
         # self.model = QNetwork(state_size, action_size, activation_fn)
         # self.target_model = QNetwork(state_size, action_size, activation_fn)
-        self.model = LSTM_PolicyNetwork(state_size, action_size, hidden_size=256, lstm_layers=1)
-        self.target_model = LSTM_PolicyNetwork(state_size, action_size, hidden_size=256, lstm_layers=1)
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
@@ -277,17 +277,27 @@ class DQNAgent:
         """
         self.memory.append((state, action, reward, next_state, done))
 
-    def choose_action(self, state):
-        """Returns actions for given state as per current policy."""
-        state_tensor = torch.FloatTensor(state).unsqueeze(0)
+    def choose_action(self, state_sequence, hidden_state=None):
+        """Returns actions for given sequence of states as per current policy."""
+        
+        # Discretize the action space into 100 steps
+        action_values = np.linspace(-1, 1, self.action_size)
 
-        if np.random.rand() > self.epsilon:  # Epsilon-greedy approach
+        if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
-                action_values = self.model(state_tensor)
-                return np.argmax(action_values.cpu().data.numpy())
-        else:
-            return random.randrange(self.action_size)
+                # Model forward pass with sequence of states
+                q_values, hidden_state = self.model(state_sequence, hidden_state)
 
+                # Get the index of the action with the highest Q-value
+                action_index = np.argmax(q_values.cpu().data.numpy())
+
+                # Return the action with the highest Q-value
+                return action_values[action_index], hidden_state
+        
+        else:  # Exploration
+            action_index = random.randrange(self.action_size)
+            return action_values[action_index], hidden_state
+        
     def replay(self):
         """
         Function to train the neural network on a batch of samples from memory.
@@ -300,18 +310,11 @@ class DQNAgent:
         minibatch = random.sample(self.memory, self.batch_size)
         
         # Extract information from each memory and convert to numpy arrays
-        # Ensure the array is of type float for subsequent operations
         states = np.array([m[0] for m in minibatch], dtype=np.float32)
         actions = np.array([m[1] for m in minibatch], dtype=np.int64).reshape(-1, 1)
         rewards = np.array([m[2] for m in minibatch], dtype=np.float32)
         next_states = np.array([m[3] for m in minibatch], dtype=np.float32)
         dones = np.array([m[4] for m in minibatch], dtype=np.float32)
-
-        # Normalize states and next states
-        states[:, 0] /= 50.0  # Make sure to use float division
-        states[:, 1] /= 24.0  # Make sure to use float division
-        next_states[:, 0] /= 50
-        next_states[:, 1] /= 24
 
         # Convert numpy arrays to tensors
         states = torch.FloatTensor(states)
@@ -320,18 +323,20 @@ class DQNAgent:
         next_states = torch.FloatTensor(next_states)
         dones = torch.FloatTensor(dones)
 
-        # Compute Q values for current states
-        Q_expected = self.model(states).gather(1, actions)
+        # Get Q values for current states
+        Q_values, _ = self.model(states)
+        Q_values = Q_values.repeat(self.batch_size, 1)
+        Q_expected = Q_values.gather(1, actions)
 
-        # Compute Q values for next states and calculate target
-        with torch.no_grad():
-            Q_next = self.model(next_states).max(1)[0].detach()
-            Q_target = rewards + (self.gamma * Q_next * (1 - dones))
+        # Get Q values for next states
+        Q_values_next, _ = self.model(next_states)
+        Q_next = Q_values_next.max(1)[0].detach()
+    
+        # Calculate target Q values
+        Q_target = rewards + (self.gamma * Q_next * (1 - dones))
 
-        # Instantiate HuberLoss
+        # Compute loss
         criterion = nn.HuberLoss()
-
-        # Compute the loss
         loss = criterion(Q_expected, Q_target.unsqueeze(1))
 
         # Backpropagation
@@ -339,16 +344,15 @@ class DQNAgent:
         loss.backward()
         self.optimizer.step()
 
-        # Increment the step counter after the training step
+        # Update target network, if needed
         self.update_target_counter += 1
-
-        # Update the target network if counter reaches 100,000
         if self.update_target_counter % 100000 == 0:
             self.target_model.load_state_dict(self.model.state_dict())
 
         # Update epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+
 
     def load(self, name):
         """
@@ -361,6 +365,41 @@ class DQNAgent:
         Function to save the model's weights.
         """
         torch.save(self.model.state_dict(), name)
+
+class LSTM_DQN(nn.Module):
+    def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
+        super(LSTM_DQN, self).__init__()
+        self.action_size = action_size
+        self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, action_size)
+        self.hidden_size = hidden_size
+        self.lstm_layers = lstm_layers
+
+    def forward(self, state, hidden_state=None):
+        # If the state is 2D (no batch dimension), add a batch dimension
+        if state.dim() == 2:
+            state = state.unsqueeze(0)  # Add batch dimension
+
+        batch_size = state.size(0)
+        
+        # Initialize hidden state if not provided
+        if hidden_state is None:
+            hidden_state = self.init_hidden(batch_size)
+        else:
+            # Adjust the hidden state batch size if necessary
+            hidden_state = (hidden_state[0][:, :batch_size, :], hidden_state[1][:, :batch_size, :])
+
+        lstm_out, hidden_state = self.lstm(state, hidden_state)
+        lstm_out = lstm_out[:, -1, :]  # Take the output of the last time step
+        action_values = self.fc(lstm_out)
+        
+        return action_values, hidden_state
+
+    def init_hidden(self, batch_size):
+        weight = next(self.parameters()).data
+        hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size),
+                  weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size))
+        return hidden
 
 class LSTM_PolicyNetwork(nn.Module):
     def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
@@ -382,10 +421,10 @@ class LSTM_PolicyNetwork(nn.Module):
         return action_mean, action_log_std.exp(), hidden_state
 
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, device, batch_size):
         # Initializes the hidden state
         # This depends on the number of LSTM layers and whether it's bidirectional
         weight = next(self.parameters()).data
-        hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_(),
-                  weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_())
+        hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_().to(device),
+                  weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_().to(device))
         return hidden
