@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.01, discount_factor=0.5, epsilon=1, epsilon_decay=0.995, min_epsilon=0, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.0005, discount_factor=0.9, epsilon=1, epsilon_decay=0.8, min_epsilon=0, max_battery=50):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -26,7 +26,9 @@ class QLearningAgent:
         """	
         Discretizes the state into a tuple of indices.
         """
-        battery_level, _, hour, available , _, _, _, _ = state
+        battery_level = state[0]
+        hour = state[2]
+        available = state[7] 
         battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
         time_idx = np.digitize(hour, self.state_bins[1]) - 1
         availability_idx = int(available)
@@ -45,12 +47,14 @@ class QLearningAgent:
         # Ensure state is within valid range
         if not self.is_valid_state(state):
             return 0 
-         
+        
+        # Choose random action with probability epsilon
         if np.random.random() < self.epsilon:
-            return random.choice(range(len(self.action_bins)))
+            return random.choice(self.action_bins)
+        # Otherwise choose greedy action
         else:
             discretized_state = self.discretize_state(state)
-            return np.argmax(self.q_table[discretized_state])
+            return self.action_bins[np.argmax(self.q_table[discretized_state])]
 
     def update(self, state, action, reward, next_state):
         """
@@ -73,8 +77,11 @@ class QLearningAgent:
         """"
         Checks if the state is valid.
         """
-        # Implement logic to check if state is valid
-        battery_level, price, hour, available , day_of_week, day_of_year, month, year = state
+        # Get variables from state
+        battery_level = state[0]
+        hour = state[2]
+        available = state[7]      
+        # Implement logic to check if state is valid  
         return 0 <= battery_level <= self.max_battery and 1 <= hour <= 24 and 0 <= available <= 1
     
 class EMA:

@@ -37,8 +37,8 @@ class Electric_Car(gym.Env):
 
         action = np.squeeze(action)  # Remove the extra dimension
 
-        # if action <-1 or action >1:
-        #     raise ValueError('Action must be between -1 and 1')
+        if action <-1 or action >1:
+            raise ValueError('Action must be between -1 and 1')
 
         # Calculate if, at 7am and after the chosen action, the battery level will be below the minimum morning level:
         if self.hour == 7:
