@@ -17,7 +17,7 @@ def objective(trial):
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
     batch_size = trial.suggest_categorical("batch_size", [24, 48, 168]) # 1 day, 2 days, 1 week
     sequence_length = trial.suggest_categorical("sequence_length", [7, 24, 48]) # 1 week, 1 day, 2 days
-    episodes = 20
+    episodes = 1
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
@@ -27,7 +27,7 @@ def objective(trial):
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 
     # Train the agent and get validation reward
-    validation_reward = train_DQN(env, agent, agent.model, test_env, episodes, sequence_length, model_save_path=f"models/DQN_version_2/lr:{lr}_gamma:{gamma}_batchsize:{batch_size}_actsize:{action_size}.pth")
+    validation_reward = train_DQN(env, agent, agent.model, test_env, episodes, sequence_length, model_save_path=f"models/DQN_version_2/lr:{lr}_gamma:{gamma}_batchsize:{batch_size}_actsize:{action_size}.pth", batch_size=batch_size)
 
     # Write trial results to CSV
     if not os.path.exists('hyperparameter_tuning_results_DQN_version3.csv'):
@@ -44,7 +44,7 @@ def objective(trial):
     return validation_reward
 
 
-def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save_path):
+def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save_path, batch_size=1):
     """
     Function to train the DQN agent.
     """
@@ -55,7 +55,7 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
         state = env.reset()
         done = False
         states, episode_rewards = [], []
-        hidden_state = model.init_hidden(1)
+        hidden_state = model.init_hidden(batch_size)
 
         if not isinstance(state, np.ndarray) or state.shape != (len(env.state),):
             state = np.reshape(state, (len(env.state),))  # Ensure the state has the correct shape
@@ -89,25 +89,40 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
 
     # Validate the agent
     agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
+    counter = 0
 
     for episode in range(episodes):
         state = test_env.reset()
-        val_episode_rewards = []
+        val_episode_rewards, states = [], []
         done = False
+        hidden_state = model.init_hidden(batch_size)
+
+        if not isinstance(state, np.ndarray) or state.shape != (len(test_env.state),):
+            state = np.reshape(state, (len(test_env.state),))  # Ensure the state has the correct shape
 
         while not done:
             if len(states) < sequence_length:
-                next_state, reward, done, _, _ = env.step(0)
-            else:
-                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-                action, hidden_state = agent.choose_action(state_sequence, hidden_state)
-                next_state, reward, done, _, _ = env.step(action)
-                val_episode_rewards.append(reward)
+                states.append(torch.from_numpy(state).float())
+                continue
+        
+            state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+            action, hidden_state = agent.choose_action(state_sequence, hidden_state)
+            next_state, reward, done, _, _ = test_env.step(action)
+            val_episode_rewards.append(reward)
 
             state = next_state
             states.append(torch.from_numpy(state).float())
 
         total_val_rewards.append(sum(val_episode_rewards))
+
+        # Early stopping
+        if episode > 0 and len(total_val_rewards) > 1:
+            if total_val_rewards[-1] < total_val_rewards[-2]:
+                counter += 1
+                if counter == 3:
+                        break
+                else:
+                    counter = 0
 
     avg_train_reward = sum(total_train_rewards) / episodes
     avg_val_reward = sum(total_val_rewards) / episodes
@@ -120,7 +135,7 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=20)  
+    study.optimize(objective, n_trials=50)  
 
     print("Best trial:")
     trial = study.best_trial

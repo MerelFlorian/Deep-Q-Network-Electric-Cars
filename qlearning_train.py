@@ -20,13 +20,13 @@ def validate_agent(test_env, test_agent, qtable):
     return total_rewards
   
 # Environment and Agent Initialization
-env = Electric_Car("data/train.xlsx")
+env = Electric_Car("./data/train.xlsx", "./data/f_train.xlsx")
 state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
-action_bins = np.linspace(-25, 25, 500)  # Discretize actions (buy/sell amounts)
+action_bins = np.linspace(-1, 1, 50)  # Discretize actions (buy/sell amounts)
 agent = QLearningAgent(state_bins, action_bins)
 
 # Load validation data into the environment
-test_env = Electric_Car("data/validate.xlsx")
+test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop
@@ -70,6 +70,5 @@ for episode in range(num_episodes):
     print(f"Episode {episode} reward: {total_reward} | Validation reward: {validation_reward}")
 
 # Save the best Q-table
-np.save('models/best_q_table.npy', best_q_table)
+np.save('models/best_q_table_2.npy', best_q_table)
 print(f"Best Q-table saved from episode {episode} with total reward: {highest_reward}")
-
