@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.0001, discount_factor=0, epsilon=0, epsilon_decay=0, min_epsilon=0, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.0001, discount_factor=0, epsilon=0.2, epsilon_decay=0.5, min_epsilon=0, max_battery=50):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -112,35 +112,37 @@ class QLearningAgent:
         Returns:
             float: The shaped reward.
         """
-        # Get prices from states
+        # Initialize the shaped reward
+        shaped_reward = 0
+
+        # Get prices and time from states 
         current_price = state[1]
         next_price = next_state[1]
+        current_time = state[2]
 
         # If action is selling (positive)
         if action > 0:
-            # If the price is higher in the next state, reward
+            # If the price is higher in the next state, penalize
             if next_price > current_price:
-                return 1
-            # If the price is lower in the next state, penalize
+                shaped_reward -= 2
+            # If the price is lower in the next state, reward
             elif next_price < current_price:
-                return -1
-            # If the price is the same, do nothing
-            else:
-                return 0
+                shaped_reward += 1
+            # If the time is between 11-14 or 18-20, small reward
+            if 11 <= current_time <= 14 or 18 <= current_time <= 20:
+                shaped_reward += 0.3
         # If action is buying (negative)
         elif action < 0:
             # If the price is lower in the next state, penalize
             if next_price < current_price:
-                return -1
+                shaped_reward -= 2
             # If the price is higher in the next state, reward
             elif next_price > current_price:
-                return 1
-            # If the price is the same, do nothing
-            else:
-                return 0
-        # If action is 0, do nothing
-        else:
-            return 0          
+                shaped_reward += 1
+            # If time is between 3-6, small reward
+            if 3 <= current_time <= 6:
+                shaped_reward += 0.3
+        return shaped_reward
         
 class EMA:
   """Implements an exponential moving average cross strategy
