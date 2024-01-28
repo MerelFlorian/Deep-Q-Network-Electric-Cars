@@ -49,12 +49,12 @@ def objective(trial: optuna.Trial) -> float:
     gamma = trial.suggest_float('gamma', 0.01, 0.7)
     noise = trial.suggest_float('noise_std', 1, 12)
     noise_decay = trial.suggest_float('noise_decay', 0.6, 0.85)
-    hidden_size = trial.suggest_categorical('hidden_size', [48, 64, 96, 128, 160, 192, 224, 256])
+    hidden_size = trial.suggest_categorical('hidden_size', [48, 64, 96, 128, 160])
     clipping = trial.suggest_int('clipping', 1, 10)
     sequence_length = trial.suggest_int('sequence_length', 1, 24)
 
     # Create a new model with these hyperparameters
-    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 2).to("mps")
+    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 3).to("mps")
     # Train the model and return the evaluation metric
     total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
     return -total_reward
@@ -78,7 +78,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
         save (bool, optional): Whether to save the model. Defaults to False.
     """
     # Initialize the optimizer
-    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.0001)
+    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.00001)
     batch_size = 1  # Assuming we're dealing with single episodes
 
     device = torch.device("mps")
@@ -203,9 +203,9 @@ if __name__ == "__main__":
                 print(f"    {key}: {value}")
         elif sys.argv[1] == 'train':
             # Create a new model with the best hyperparameters
-            policy_network = LSTM_PolicyNetwork(len(env.state), 1, 48, 1).to("mps")
+            policy_network = LSTM_PolicyNetwork(len(env.state), 1, 256, 1).to("mps")
             # Load the best model weights
-            train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.005, gamma=0.37, noise_std = 0.5, clipping=3, sequence_length=21, save=True)
+            train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.009, gamma=0.01, noise_std = 10.9, noise_decay=0.7, clipping=4, sequence_length=22, save=True)
         else:
             print('Invalid command line argument. Please use one of the following: tune, train')
             exit()
