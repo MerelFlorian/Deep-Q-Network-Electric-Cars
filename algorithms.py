@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.0005, discount_factor=0.9, epsilon=1, epsilon_decay=0.8, min_epsilon=0, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.0001, discount_factor=0, epsilon=0, epsilon_decay=0, min_epsilon=0, max_battery=50):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -60,17 +60,34 @@ class QLearningAgent:
         """
         Updates the Q-table using Q-learning.
         """
+        # Print reward and price, action
+        # print(f"Reward: {reward} | Price: {state[1]}, action: {action}, battery_level: {state[0]}, available: {state[7]}")
+
         # Skip update if state is invalid
         if not self.is_valid_state(state) or not self.is_valid_state(next_state):
             return  
         
+        # Discretize current state, next state, and action
         discretized_state = self.discretize_state(state)
         discretized_next_state = self.discretize_state(next_state)
         discretized_action = self.discretize_action(action)
+        
+        # Select best action for the next state
         best_next_action = np.argmax(self.q_table[discretized_next_state])
-        td_target = reward + self.gamma * self.q_table[discretized_next_state + (best_next_action,)]
+
+        # Reward shaping 
+        shaped_reward = self.reward_shaping(state, next_state, action)
+        
+        # Calculate the TD target using the reward and Q-values of the next state, add reward shaping
+        td_target = reward + shaped_reward + self.gamma * self.q_table[discretized_next_state + (best_next_action,)]
+        
+        # Calculate TD error
         td_error = td_target - self.q_table[discretized_state + (discretized_action,)]
+        
+        # Update Q-value using Q-learning update rule
         self.q_table[discretized_state + (discretized_action,)] += self.lr * td_error
+        
+        # Update epsilon value (exploration-exploitation tradeoff)
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.min_epsilon)
 
     def is_valid_state(self, state):
@@ -84,6 +101,47 @@ class QLearningAgent:
         # Implement logic to check if state is valid  
         return 0 <= battery_level <= self.max_battery and 1 <= hour <= 24 and 0 <= available <= 1
     
+    def reward_shaping(self, state, next_state, action):
+        """Shape the reward such that buying low and selling high is encouraged.
+
+        Args:
+            state (list): The current state of the environment.
+            next_state (list): The next state of the environment.
+            action (float): The action taken at the current time step.
+
+        Returns:
+            float: The shaped reward.
+        """
+        # Get prices from states
+        current_price = state[1]
+        next_price = next_state[1]
+
+        # If action is selling (positive)
+        if action > 0:
+            # If the price is higher in the next state, reward
+            if next_price > current_price:
+                return 1
+            # If the price is lower in the next state, penalize
+            elif next_price < current_price:
+                return -1
+            # If the price is the same, do nothing
+            else:
+                return 0
+        # If action is buying (negative)
+        elif action < 0:
+            # If the price is lower in the next state, penalize
+            if next_price < current_price:
+                return -1
+            # If the price is higher in the next state, reward
+            elif next_price > current_price:
+                return 1
+            # If the price is the same, do nothing
+            else:
+                return 0
+        # If action is 0, do nothing
+        else:
+            return 0          
+        
 class EMA:
   """Implements an exponential moving average cross strategy
   """

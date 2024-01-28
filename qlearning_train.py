@@ -46,6 +46,7 @@ for episode in range(num_episodes):
     while not done:
         action = agent.choose_action(state)
         next_state, reward, done, _, _ = env.step(action)
+
         if not done:
             agent.update(state, action, reward, next_state)
             battery_levels.append(env.battery_level)

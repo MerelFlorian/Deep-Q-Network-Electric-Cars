@@ -37,8 +37,8 @@ class Electric_Car(gym.Env):
 
         action = np.squeeze(action)  # Remove the extra dimension
 
-        if action <-1 or action >1:
-            raise ValueError('Action must be between -1 and 1')
+        # if action <-1 or action >1:
+        #     raise ValueError('Action must be between -1 and 1')
 
         # Calculate if, at 7am and after the chosen action, the battery level will be below the minimum morning level:
         if self.hour == 7:
@@ -137,7 +137,7 @@ class Electric_Car(gym.Env):
         year = self.timestamps[self.day - 1].year
 
         self.state = np.array(
-            [battery_level, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
+            [battery_level/25, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
         
         # ADDED extra features: MAs 3-12, EMAs 3-12, Expanding Mean/Median/Std/Var/Min/Max
