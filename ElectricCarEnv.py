@@ -135,9 +135,10 @@ class Electric_Car(gym.Env):
         day_of_year = self.timestamps[self.day - 1].dayofyear  # January 1st = 1, December 31st = 365
         month = self.timestamps[self.day - 1].month  # January = 1, December = 12
         year = self.timestamps[self.day - 1].year
-
+        
+        # MODIFIED: Battery level divided by 25 to normalize it
         self.state = np.array(
-            [battery_level/25, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
+            [battery_level / 25, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
         
         # ADDED extra features: MAs 3-12, EMAs 3-12, Expanding Mean/Median/Std/Var/Min/Max
