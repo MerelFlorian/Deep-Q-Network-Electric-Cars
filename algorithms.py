@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.0001, discount_factor=0, epsilon=0.2, epsilon_decay=0.5, min_epsilon=0, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.000000000001, discount_factor=0, epsilon=0.8, epsilon_decay=0.9, min_epsilon=0, max_battery=50, shape_weight = 0.8):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -20,19 +20,25 @@ class QLearningAgent:
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
-        self.q_table = np.zeros(shape=(len(state_bins[0]), len(state_bins[1]), len(state_bins[2]), len(action_bins)))
+        self.q_table = np.zeros(shape=(len(state_bins[0]), len(state_bins[1]), len(state_bins[2]), len(state_bins[3]), len(action_bins)))
+        self.shape_weight = shape_weight
 
     def discretize_state(self, state):
         """	
         Discretizes the state into a tuple of indices.
         """
+        # Extract variables from state
         battery_level = state[0]
         hour = state[2]
         available = state[7] 
+        price = state[1]
+
+        # Discretize the state variables
         battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
         time_idx = np.digitize(hour, self.state_bins[1]) - 1
         availability_idx = int(available)
-        return battery_idx, time_idx, availability_idx
+        price_idx = np.digitize(price, self.state_bins[3]) - 1
+        return battery_idx, time_idx, availability_idx, price_idx
 
     def discretize_action(self, action):
         """
@@ -56,7 +62,7 @@ class QLearningAgent:
             discretized_state = self.discretize_state(state)
             return self.action_bins[np.argmax(self.q_table[discretized_state])]
 
-    def update(self, state, action, reward, next_state):
+    def update(self, state, action, reward, next_state, last_price):
         """
         Updates the Q-table using Q-learning.
         """
@@ -75,8 +81,8 @@ class QLearningAgent:
         # Select best action for the next state
         best_next_action = np.argmax(self.q_table[discretized_next_state])
 
-        # Reward shaping 
-        shaped_reward = self.reward_shaping(state, next_state, action)
+        # Reward shaping with increasing value
+        shaped_reward = self.reward_shaping(state, next_state, action, last_price) * self.shape_weight
         
         # Calculate the TD target using the reward and Q-values of the next state, add reward shaping
         td_target = reward + shaped_reward + self.gamma * self.q_table[discretized_next_state + (best_next_action,)]
@@ -87,8 +93,16 @@ class QLearningAgent:
         # Update Q-value using Q-learning update rule
         self.q_table[discretized_state + (discretized_action,)] += self.lr * td_error
         
+    
+    def update_epsilon(self):
+        """Epsilon decay.
+
+        Args:
+            epsilon (_type_): The new epsilon value.
+        """
         # Update epsilon value (exploration-exploitation tradeoff)
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.min_epsilon)
+
 
     def is_valid_state(self, state):
         """"
@@ -101,8 +115,8 @@ class QLearningAgent:
         # Implement logic to check if state is valid  
         return 0 <= battery_level <= self.max_battery and 1 <= hour <= 24 and 0 <= available <= 1
     
-    def reward_shaping(self, state, next_state, action):
-        """Shape the reward such that buying low and selling high is encouraged.
+    def reward_shaping(self, state, next_state, action, last_price):
+        """Shape the reward such that buying low and selling high is encouraged. 
 
         Args:
             state (list): The current state of the environment.
@@ -118,30 +132,28 @@ class QLearningAgent:
         # Get prices and time from states 
         current_price = state[1]
         next_price = next_state[1]
-        current_time = state[2]
 
         # If action is selling (positive)
         if action > 0:
-            # If the price is higher in the next state, penalize
-            if next_price > current_price:
-                shaped_reward -= 2
-            # If the price is lower in the next state, reward
-            elif next_price < current_price:
-                shaped_reward += 1
-            # If the time is between 11-14 or 18-20, small reward
-            if 11 <= current_time <= 14 or 18 <= current_time <= 20:
-                shaped_reward += 0.3
+            # If the price is higher in the next state and lower in the last state, penalize
+            if next_price > current_price and current_price < last_price:
+                shaped_reward -= 0.5
+            # If the price is lower in the next state and last state, reward
+            elif next_price < current_price and current_price > last_price:
+                shaped_reward += 0.5
         # If action is buying (negative)
         elif action < 0:
-            # If the price is lower in the next state, penalize
-            if next_price < current_price:
-                shaped_reward -= 2
-            # If the price is higher in the next state, reward
-            elif next_price > current_price:
-                shaped_reward += 1
-            # If time is between 3-6, small reward
-            if 3 <= current_time <= 6:
-                shaped_reward += 0.3
+            # If the price is lower in the next state and lower in the last state, penalize
+            if next_price < current_price and current_price > last_price:
+                shaped_reward -= 0.5
+            # If the price is higher in the next state and last state, reward
+            elif next_price > current_price and current_price < last_price:
+                shaped_reward += 0.5
+        # If action is 0
+        else:
+            # If the price is lower in last state and higher in next state or vice versa, reward
+            if (last_price < current_price and next_price > current_price) or (last_price > current_price and next_price < current_price):
+                shaped_reward += 0.4
         return shaped_reward
         
 class EMA:
