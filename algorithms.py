@@ -334,6 +334,7 @@ class DQNAgent:
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
+        self.replay_size = 24
     
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
@@ -348,59 +349,58 @@ class DQNAgent:
     def choose_action(self, state):
         """Returns actions for given sequence of states as per current policy."""
         
-        # Discretize the action space into 100 steps
+        # Discretize the action space into action_size steps
         action_values = np.linspace(-1, 1, self.action_size)
+
+        # Convert state to Tensor if it's not already one
+        if not isinstance(state, torch.Tensor):
+            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
-                # Model forward pass with sequence of states
+                # Model forward pass with state
                 q_values = self.model(state)
-
+                
                 # Get the index of the action with the highest Q-value
-                action_index = np.argmax(q_values.cpu().data.numpy())
+                action_index = torch.argmax(q_values, dim=1).item()  # Assuming q_values shape is [1, action_size]
 
-                # Return the action with the highest Q-value
+                # Return the action corresponding to the highest Q-value
                 return action_index, action_values[action_index]
-            
+
         else:  # Exploration
             action_index = random.randrange(self.action_size)
             return action_index, action_values[action_index]
-        
+            
     def replay(self):
         """
-        Function to train the neural network on a batch of samples from memory.
+        Function to train the neural network on a single sample from memory.
         """
         self.train_step_counter += 1
 
-        if len(self.memory) < self.batch_size or self.train_step_counter % 4 != 0:
+        if len(self.memory) < self.replay_size or self.train_step_counter % 4 != 0:
             return  # Train only every 4th step and if enough samples
 
-        minibatch = random.sample(self.memory, self.batch_size)
+        # Sample a single experience from memory
+        state, action, action_index, reward, next_state, done = random.choice(self.memory)
         
-        # Convert sequences in minibatch to tensors and stack them
-        state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[0]]).unsqueeze(0) for m in minibatch])
-        actions = torch.tensor([m[1] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
-        action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
-        rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32)
-        next_state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[4]]).unsqueeze(0) for m in minibatch])
-        dones = torch.tensor([m[5] for m in minibatch], dtype=torch.float32)
+        # Convert the state and next_state to tensors
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
 
-        # Compute Q-values for current and next state sequences
-        q_values = self.model(state_sequences)
-        next_q_values = self.model(next_state_sequences)
-        
-        # Choose the best Q-value for next states, hidden_state
-        max_next_q_values = next_q_values.max(dim=2)[0].detach()
+        # Compute Q-values for current and next state
+        q_values = self.model(state_tensor)
+        next_q_values = self.model(next_state_tensor)
 
-        # Calculate target Q values
-        Q_target = rewards + (self.gamma * max_next_q_values * (1 - dones))
+        # Choose the best Q-value for next state
+        max_next_q_value = next_q_values.max(dim=1)[0].detach()
+
+        # Calculate target Q value
+        Q_target = reward + (self.gamma * max_next_q_value * (1 - done))
 
         # Compute loss
         criterion = nn.HuberLoss()
-        
-        expanded_action_indices = action_indices.unsqueeze(-1)  # This will change its shape to [batch_size, 1, 1]
-        Q_expected = q_values.gather(2, expanded_action_indices).squeeze(-1) # Use gather to select the Q-values corresponding to the taken actions
-        loss = criterion(Q_expected, Q_target.unsqueeze(1))
+        Q_expected = q_values[0, action_index]  # Select the Q-value for the taken action
+        loss = criterion(Q_expected.unsqueeze(0), torch.tensor([Q_target], dtype=torch.float32))
 
         # Backpropagation
         self.optimizer.zero_grad()

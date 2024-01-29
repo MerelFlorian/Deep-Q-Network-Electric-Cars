@@ -15,8 +15,8 @@ def objective(trial):
     lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
     gamma = trial.suggest_float("gamma", 0.1, 0.3)
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
-    batch_size = trial.suggest_categorical("batch_size", [24, 48, 168]) # 1 day, 2 days, 1 week
-    sequence_length = trial.suggest_categorical("sequence_length", [7, 24, 48]) # 1 week, 1 day, 2 days
+    #batch_size = trial.suggest_categorical("batch_size", [24, 48, 168]) # 1 day, 2 days, 1 week
+    #sequence_length = trial.suggest_categorical("sequence_length", [7, 24, 48]) # 1 week, 1 day, 2 days
     episodes = 30
 
     # Create the environment and agent
@@ -27,15 +27,15 @@ def objective(trial):
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 
     # Train the agent and get validation reward
-    validation_reward = train_DQN(env, agent, agent.model, test_env, episodes, sequence_length, model_save_path=f"models/DQN_version_4/lr:{lr}_gamma:{gamma}_batchsize:{batch_size}_actsize:{action_size}.pth")
+    validation_reward = train_DQN(env, agent, agent.model, test_env, episodes, model_save_path=f"models/DQN_version_4/lr:{lr}_gamma:{gamma}_actsize:{action_size}.pth")
 
     # Write trial results to CSV
     if not os.path.exists('hyperparameter_tuning_results_DQN_version4.csv'):
         with open('hyperparameter_tuning_results_version4.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Action Size', 'Sequence length', 'Validation Reward'])
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Action Size', 'Validation Reward'])
 
-    fields = [trial.number, lr, gamma, action_size, sequence_length, validation_reward]
+    fields = [trial.number, lr, gamma, action_size, validation_reward]
     with open('hyperparameter_tuning_results_DQN_version4.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
@@ -133,7 +133,7 @@ def objective(trial):
  
 #     return avg_val_reward
 
-def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save_path):
+def train_DQN(env, agent, model, test_env, episodes, model_save_path):
     """
     Function to train the DQN agent.
     """
@@ -148,29 +148,17 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
         if not isinstance(state, np.ndarray) or state.shape != (len(env.state),):
             state = np.reshape(state, (len(env.state),))  # Ensure the state has the correct shape
         
-        while not done:
-            # Prepare the sequence of states
-            if len(states) < sequence_length:
-                next_state, reward, done, _, _ = env.step(0)
-            else:
-                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-                action_index, action = agent.choose_action(state_sequence)
+        while not done:    
+            action_index, action = agent.choose_action(state)
+            next_state, reward, done, _, _ = env.step(action)
+            episode_rewards.append(reward)
+            agent.remember(state, action, action_index, reward, next_state, done)
 
-                next_state, reward, done, _, _ = env.step(action)
-                episode_rewards.append(reward)
-                agent.remember(state, action, action_index, reward, next_state, done)
-
-                if len(agent.memory) > agent.batch_size:
-                    agent.replay()
-              
+            if len(agent.memory) > agent.replay_size:
+                agent.replay()
+            
             state = next_state
             states.append(torch.from_numpy(state).float())
-            
-            if len(states) < sequence_length:
-                continue
-
-            if done:
-                break
                 
         total_train_rewards.append(sum(episode_rewards))
 
@@ -189,18 +177,12 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
             state = np.reshape(state, (len(test_env.state),))  # Ensure the state has the correct shape
 
         while not done:
-            if len(states) < sequence_length:
-                next_state, reward, done, _, _ = test_env.step(0)
-            else:
-                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-                action_index, action  = agent.choose_action(state_sequence)
-                next_state, reward, done, _, _ = test_env.step(action)
-                val_episode_rewards.append(reward)
+            action_index, action  = agent.choose_action(state)
+            next_state, reward, done, _, _ = test_env.step(action)
+            val_episode_rewards.append(reward)
             state = next_state
             states.append(torch.from_numpy(state).float())
-            if len(states) < sequence_length:
-                continue
-
+           
         total_val_rewards.append(sum(val_episode_rewards))
 
         # Early stopping
@@ -217,7 +199,6 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
     print(f"Average Training Reward: {avg_train_reward}, Average Validation Reward: {avg_val_reward}")
     
     agent.save(model_save_path)
- 
     return avg_val_reward
 
 if __name__ == "__main__":
