@@ -343,11 +343,11 @@ class DQNAgent:
         self.update_target_counter = 0  # Counter to track steps for updating target network
 
 
-    def remember(self, state, action, reward, next_state, done):
+    def remember(self, state, action, action_index, reward, next_state, done):
         """
         Function to store a transition in memory.
         """
-        self.memory.append((state, action, reward, next_state, done))
+        self.memory.append((state, action, action_index, reward, next_state, done))
 
     def choose_action(self, state_sequence, hidden_state=None):
         """Returns actions for given sequence of states as per current policy."""
@@ -364,13 +364,13 @@ class DQNAgent:
                 action_index = np.argmax(q_values.cpu().data.numpy())
 
                 # Return the action with the highest Q-value
-                return action_values[action_index], hidden_state
+                return action_index, action_values[action_index], hidden_state
         
         else:  # Exploration
             action_index = random.randrange(self.action_size)
-            return action_values[action_index], hidden_state
+            return action_index, action_values[action_index], hidden_state
         
-    def replay(self):
+    def replay(self, hidden_state=None):
         """
         Function to train the neural network on a batch of samples from memory.
         """
@@ -381,34 +381,27 @@ class DQNAgent:
 
         minibatch = random.sample(self.memory, self.batch_size)
         
-        # Extract information from each memory and convert to numpy arrays
-        states = np.array([m[0] for m in minibatch], dtype=np.float32)
-        actions = np.array([m[1] for m in minibatch], dtype=np.int64).reshape(-1, 1)
-        rewards = np.array([m[2] for m in minibatch], dtype=np.float32)
-        next_states = np.array([m[3] for m in minibatch], dtype=np.float32)
-        dones = np.array([m[4] for m in minibatch], dtype=np.float32)
+        # Convert sequences in minibatch to tensors and stack them
+        state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[0]]).unsqueeze(0) for m in minibatch])
+        actions = torch.tensor([m[1] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
+        action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
+        rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32)
+        next_state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[4]]).unsqueeze(0) for m in minibatch])
+        dones = torch.tensor([m[5] for m in minibatch], dtype=torch.float32)
 
-        # Convert numpy arrays to tensors
-        states = torch.FloatTensor(states)
-        actions = torch.LongTensor(actions)
-        rewards = torch.FloatTensor(rewards)
-        next_states = torch.FloatTensor(next_states)
-        dones = torch.FloatTensor(dones)
+        # Compute Q-values for current and next state sequences
+        q_values, _ = self.model(state_sequences)
+        next_q_values, _ = self.model(next_state_sequences)
+        
+        # Choose the best Q-value for next states
+        max_next_q_values = next_q_values.max(dim=1)[0].detach()
 
-        # Get Q values for current states
-        Q_values, _ = self.model(states)
-        Q_values = Q_values.repeat(self.batch_size, 1)
-        Q_expected = Q_values.gather(1, actions)
-
-        # Get Q values for next states
-        Q_values_next, _ = self.model(next_states)
-        Q_next = Q_values_next.max(1)[0].detach()
-    
         # Calculate target Q values
-        Q_target = rewards + (self.gamma * Q_next * (1 - dones))
+        Q_target = rewards + (self.gamma * max_next_q_values * (1 - dones))
 
         # Compute loss
         criterion = nn.HuberLoss()
+        Q_expected = q_values.gather(1, action_indices)
         loss = criterion(Q_expected, Q_target.unsqueeze(1))
 
         # Backpropagation
@@ -424,7 +417,6 @@ class DQNAgent:
         # Update epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-
 
     def load(self, name):
         """

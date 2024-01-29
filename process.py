@@ -14,28 +14,18 @@ def compute_stats(data: dict, df: pd.DataFrame, min: int, max: int) -> dict:
     Returns:
         dict: The dictionary containing the moving averages.
     """
-    for i in range(min, max):
+    for i in [min, max]:
         # Compute the exponential moving averages with the specified span
         data[f'{i}EMA'] = pd.Series(df).ewm(span=i, adjust=False).mean()
 
     for n in [50, 100, 200]:
         # Compute the moving averages with the specified window
         data[f'{n}MA'] = pd.Series(df).rolling(window=n, min_periods=1).mean()
-        data[f'{n * 4}MA'] = pd.Series(df).rolling(window=n*4, min_periods=1).mean()
-        data[f'{n * 24}MA'] = pd.Series(df).rolling(window=n*24, min_periods=1).mean()
     
     # Compute the expanding average
     data['ExMA'] = pd.Series(df).expanding(min_periods=1).mean()
-    # Compute the expanding median
-    data['ExMedian'] = pd.Series(df).expanding(min_periods=1).median()
-    # Compute the expanding min
-    data['ExMin'] = pd.Series(df).expanding(min_periods=1).min()
-    # Compute the expanding max
-    data['ExMax'] = pd.Series(df).expanding(min_periods=1).max()
     # Compute the expanding std
     data['ExStd'] = pd.Series(df).expanding(min_periods=1).std().fillna(0)
-    # Compute the expanding var
-    data['ExVar'] = pd.Series(df).expanding(min_periods=1).var().fillna(0)
 
     return data
 
@@ -99,7 +89,7 @@ def create_features(path: str, save_to="features.xlsx") -> None:
     }
 
     # Compute the moving averages
-    new_data = compute_stats(new_data, df, 3, 13)
+    new_data = compute_stats(new_data, df, 3, 7)
 
     # Assign the new_data to the new_df
     new_df = pd.DataFrame(new_data)
