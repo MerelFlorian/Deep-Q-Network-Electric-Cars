@@ -1,4 +1,3 @@
-import torch.nn as nn
 import torch
 import torch.optim as optim
 from gym import Env
@@ -7,7 +6,6 @@ import numpy as np
 import optuna
 import sys
 from algorithms import LSTM_PolicyNetwork
-from typing import Tuple
     
 def normalize_rewards(rewards):
     rewards = np.array(rewards)
@@ -16,6 +14,39 @@ def normalize_rewards(rewards):
     if std == 0:
         return rewards - mean
     return (rewards - mean) / std
+
+def shape_rewards(state, next_state, action):
+    # Initialize the shaped reward
+    shaped_reward = 0
+
+    # Get prices and time from states 
+    current_price = state[1]
+    next_price = next_state[1]
+    current_time = state[2]
+
+    # If action is selling (positive)
+    if action > 0:
+        # If the price is higher in the next state, penalize
+        if next_price > current_price:
+            shaped_reward -= 1
+        # If the price is lower in the next state, reward
+        elif next_price < current_price:
+            shaped_reward += 1
+        # If the time is between 11-14 or 18-20, small reward
+        if 11 <= current_time <= 14 or 18 <= current_time <= 20:
+            shaped_reward += 0.3
+    # If action is buying (negative)
+    elif action < 0:
+        # If the price is lower in the next state, penalize
+        if next_price < current_price:
+            shaped_reward -= 1
+        # If the price is higher in the next state, reward
+        elif next_price > current_price:
+            shaped_reward += 1
+        # If time is between 3-6, small reward
+        if 3 <= current_time <= 6:
+            shaped_reward += 0.3
+    return shaped_reward
     
 def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
     """ Computes the discounted returns for a list of rewards.
@@ -45,16 +76,16 @@ def objective(trial: optuna.Trial) -> float:
         float: The evaluation metric.
     """
     # Define the hyperparameters using the trial object
-    lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
+    lr = trial.suggest_float('lr', 1e-3, 1e-2, log=True)
     gamma = trial.suggest_float('gamma', 0.01, 0.7)
-    noise = trial.suggest_float('noise_std', 1, 12)
-    noise_decay = trial.suggest_float('noise_decay', 0.6, 0.85)
-    hidden_size = trial.suggest_categorical('hidden_size', [48, 64, 96, 128, 160])
+    noise = trial.suggest_float('noise_std', 2, 15)
+    noise_decay = trial.suggest_float('noise_decay', 0.69, 0.95)
+    hidden_size = trial.suggest_categorical('hidden_size', [48, 64, 96, 128, 156])
     clipping = trial.suggest_int('clipping', 1, 10)
-    sequence_length = trial.suggest_int('sequence_length', 1, 24)
+    sequence_length = trial.suggest_int('sequence_length', 1, 30)
 
     # Create a new model with these hyperparameters
-    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 3).to("mps")
+    policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 1).to("mps")
     # Train the model and return the evaluation metric
     total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
     return -total_reward
@@ -78,7 +109,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
         save (bool, optional): Whether to save the model. Defaults to False.
     """
     # Initialize the optimizer
-    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.00001)
+    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.001)
     batch_size = 1  # Assuming we're dealing with single episodes
 
     device = torch.device("mps")
@@ -116,7 +147,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 # Take a step in the environment
                 next_state, reward, done, _, _ = env.step(action.item())
                 # Store the reward and log probability
-                rewards.append(reward)
+                rewards.append(shape_rewards(states[-1], next_state, action) + reward)
                 log_probs.append(log_prob)
 
             state = next_state
