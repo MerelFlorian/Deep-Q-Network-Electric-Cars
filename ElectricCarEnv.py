@@ -141,7 +141,7 @@ class Electric_Car(gym.Env):
             [battery_level / 25, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
         
-        # ADDED extra features: MAs 3-12, EMAs 3-12, Expanding Mean/Median/Std/Var/Min/Max
+        # ADDED extra features: MAs 50, 100, 200, EMAs 3 & 7, Expanding Mean/Std/
         self.state = np.concatenate((self.state, self.features.iloc[self.counter]))
 
         return self.state
