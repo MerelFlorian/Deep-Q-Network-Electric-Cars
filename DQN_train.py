@@ -17,7 +17,7 @@ def objective(trial):
     action_size = trial.suggest_categorical("action_size", [100, 200, 500])
     batch_size = trial.suggest_categorical("batch_size", [24, 48, 168]) # 1 day, 2 days, 1 week
     sequence_length = trial.suggest_categorical("sequence_length", [7, 24, 48]) # 1 week, 1 day, 2 days
-    episodes = 1
+    episodes = 30
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
@@ -66,10 +66,11 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
                 next_state, reward, done, _, _ = env.step(0)
             else:
                 state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-                action, hidden_state = agent.choose_action(state_sequence, hidden_state)
+                action_index, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
+
                 next_state, reward, done, _, _ = env.step(action)
                 episode_rewards.append(reward)
-                agent.remember(state, action, reward, next_state, done)
+                agent.remember(state, action, action_index, reward, next_state, done)
 
                 if len(agent.memory) > agent.batch_size:
                     agent.replay()
@@ -106,7 +107,7 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
                 continue
         
             state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-            action, hidden_state = agent.choose_action(state_sequence, hidden_state)
+            action_index, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
             next_state, reward, done, _, _ = test_env.step(action)
             val_episode_rewards.append(reward)
 
