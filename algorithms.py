@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.01, discount_factor=0.5, epsilon=1, epsilon_decay=0.995, min_epsilon=0, max_battery=50):
+    def __init__(self, state_bins, action_bins, learning_rate=0.0001, discount_factor=0, epsilon=0.2, epsilon_decay=0.5, min_epsilon=0, max_battery=50):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -26,7 +26,9 @@ class QLearningAgent:
         """	
         Discretizes the state into a tuple of indices.
         """
-        battery_level, _, hour, available , _, _, _, _ = state
+        battery_level = state[0]
+        hour = state[2]
+        available = state[7] 
         battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
         time_idx = np.digitize(hour, self.state_bins[1]) - 1
         availability_idx = int(available)
@@ -45,38 +47,103 @@ class QLearningAgent:
         # Ensure state is within valid range
         if not self.is_valid_state(state):
             return 0 
-         
+        
+        # Choose random action with probability epsilon
         if np.random.random() < self.epsilon:
-            return random.choice(range(len(self.action_bins)))
+            return random.choice(self.action_bins)
+        # Otherwise choose greedy action
         else:
             discretized_state = self.discretize_state(state)
-            return np.argmax(self.q_table[discretized_state])
+            return self.action_bins[np.argmax(self.q_table[discretized_state])]
 
     def update(self, state, action, reward, next_state):
         """
         Updates the Q-table using Q-learning.
         """
+        # Print reward and price, action
+        # print(f"Reward: {reward} | Price: {state[1]}, action: {action}, battery_level: {state[0]}, available: {state[7]}")
+
         # Skip update if state is invalid
         if not self.is_valid_state(state) or not self.is_valid_state(next_state):
             return  
         
+        # Discretize current state, next state, and action
         discretized_state = self.discretize_state(state)
         discretized_next_state = self.discretize_state(next_state)
         discretized_action = self.discretize_action(action)
+        
+        # Select best action for the next state
         best_next_action = np.argmax(self.q_table[discretized_next_state])
-        td_target = reward + self.gamma * self.q_table[discretized_next_state + (best_next_action,)]
+
+        # Reward shaping 
+        shaped_reward = self.reward_shaping(state, next_state, action)
+        
+        # Calculate the TD target using the reward and Q-values of the next state, add reward shaping
+        td_target = reward + shaped_reward + self.gamma * self.q_table[discretized_next_state + (best_next_action,)]
+        
+        # Calculate TD error
         td_error = td_target - self.q_table[discretized_state + (discretized_action,)]
+        
+        # Update Q-value using Q-learning update rule
         self.q_table[discretized_state + (discretized_action,)] += self.lr * td_error
+        
+        # Update epsilon value (exploration-exploitation tradeoff)
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.min_epsilon)
 
     def is_valid_state(self, state):
         """"
         Checks if the state is valid.
         """
-        # Implement logic to check if state is valid
-        battery_level, price, hour, available , day_of_week, day_of_year, month, year = state
+        # Get variables from state
+        battery_level = state[0]
+        hour = state[2]
+        available = state[7]      
+        # Implement logic to check if state is valid  
         return 0 <= battery_level <= self.max_battery and 1 <= hour <= 24 and 0 <= available <= 1
     
+    def reward_shaping(self, state, next_state, action):
+        """Shape the reward such that buying low and selling high is encouraged.
+
+        Args:
+            state (list): The current state of the environment.
+            next_state (list): The next state of the environment.
+            action (float): The action taken at the current time step.
+
+        Returns:
+            float: The shaped reward.
+        """
+        # Initialize the shaped reward
+        shaped_reward = 0
+
+        # Get prices and time from states 
+        current_price = state[1]
+        next_price = next_state[1]
+        current_time = state[2]
+
+        # If action is selling (positive)
+        if action > 0:
+            # If the price is higher in the next state, penalize
+            if next_price > current_price:
+                shaped_reward -= 2
+            # If the price is lower in the next state, reward
+            elif next_price < current_price:
+                shaped_reward += 1
+            # If the time is between 11-14 or 18-20, small reward
+            if 11 <= current_time <= 14 or 18 <= current_time <= 20:
+                shaped_reward += 0.3
+        # If action is buying (negative)
+        elif action < 0:
+            # If the price is lower in the next state, penalize
+            if next_price < current_price:
+                shaped_reward -= 2
+            # If the price is higher in the next state, reward
+            elif next_price > current_price:
+                shaped_reward += 1
+            # If time is between 3-6, small reward
+            if 3 <= current_time <= 6:
+                shaped_reward += 0.3
+        return shaped_reward
+        
 class EMA:
   """Implements an exponential moving average cross strategy
   """

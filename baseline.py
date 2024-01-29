@@ -67,7 +67,7 @@ def qlearning() -> QLearningAgent:
     # Create a new agent instance
     test_agent = QLearningAgent(state_bins, action_bins) 
     # Load the Q-table
-    test_agent.q_table = np.load('models/best_q_table.npy')
+    test_agent.q_table = np.load('models/best_q_table_2.npy')
 
     # Return the agent
     return test_agent
