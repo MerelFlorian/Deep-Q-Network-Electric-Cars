@@ -21,8 +21,21 @@ def validate_agent(test_env, test_agent, qtable):
   
 # Environment and Agent Initialization
 env = Electric_Car("./data/train.xlsx", "./data/f_train.xlsx")
-state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
+
+# Discretize battery level, time, availability, price
+state_bins = [
+    np.linspace(0, 50, 5),  # Bins for battery level
+    np.arange(0, 25),        # Bins for time
+    np.array([0, 1]),        # Bins for availability
+    np.concatenate([
+        np.linspace(0, 100, 100),    # Bins for prices between 0 and 100 with 100 bins
+        np.linspace(100, 2500, 4)  # Bins for prices from 100 to 2500 with 3 bins
+    ])  # Bins for price
+]
+
+#  Discretize action bins
 action_bins = np.linspace(-1, 1, 50)  # Discretize actions (buy/sell amounts)
+# Initialize the agent
 agent = QLearningAgent(state_bins, action_bins)
 
 # Load validation data into the environment
@@ -30,7 +43,7 @@ test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 test_agent = QLearningAgent(state_bins, action_bins) 
 
 # Training Loop
-num_episodes = 100
+num_episodes = 10
 total_rewards = []
 total_validation_rewards = []
 highest_reward = -np.inf
@@ -42,14 +55,17 @@ for episode in range(num_episodes):
     done = False
     total_reward = 0
     battery_levels = []
+    agent.update_epsilon()
+    last_price = 0
 
     while not done:
         action = agent.choose_action(state)
         next_state, reward, done, _, _ = env.step(action)
 
         if not done:
-            agent.update(state, action, reward, next_state)
+            agent.update(state, action, reward, next_state, last_price)
             battery_levels.append(env.battery_level)
+        last_price= state[1]
         state = next_state
         total_reward += reward
 
@@ -68,7 +84,11 @@ for episode in range(num_episodes):
         best_q_table = agent.q_table.copy()
         best_battery_levels = battery_levels.copy()
 
-    print(f"Episode {episode} reward: {total_reward} | Validation reward: {validation_reward}")
+    # Print the total reward for this episode
+    print(f"Episode {episode} reward: {total_reward} | Validation reward: {validation_reward} | epsilon: {agent.epsilon}")
+    
+    # Print percentage of 0s in the Q-table
+    print(f"Percentage of 0s in Q-table: {np.sum(agent.q_table == 0) / agent.q_table.size}")
 
 # Save the best Q-table
 np.save('models/best_q_table_2.npy', best_q_table)

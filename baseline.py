@@ -61,8 +61,18 @@ def qlearning() -> QLearningAgent:
     Returns:
         QLearningAgent: The Q-learning agent.
     """
-    # Initialize the state and action bins
-    state_bins = [np.linspace(0, 50, 50), np.arange(0, 25), np.array([0, 1])]  # Discretize battery level, time, availability
+
+    # Discretize battery level, time, availability, price
+    state_bins = [
+        np.linspace(0, 50, 5),  # Bins for battery level
+        np.arange(0, 25),        # Bins for time
+        np.array([0, 1]),        # Bins for availability
+        np.concatenate([
+            np.linspace(0, 100, 100),    # Bins for prices between 0 and 100 with 100 bins
+            np.linspace(100, 2500, 4)  # Bins for prices from 100 to 2500 with 3 bins
+        ])  # Bins for price
+    ]
+    # Discretize action bins
     action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)]
     # Create a new agent instance
     test_agent = QLearningAgent(state_bins, action_bins) 
