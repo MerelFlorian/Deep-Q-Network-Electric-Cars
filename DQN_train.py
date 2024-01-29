@@ -190,16 +190,16 @@ def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save
 
         while not done:
             if len(states) < sequence_length:
-                states.append(torch.from_numpy(state).float())
-                continue
-        
-            state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-            action_index, action  = agent.choose_action(state_sequence)
-            next_state, reward, done, _, _ = test_env.step(action)
-            val_episode_rewards.append(reward)
-
+                next_state, reward, done, _, _ = test_env.step(0)
+            else:
+                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+                action_index, action  = agent.choose_action(state_sequence)
+                next_state, reward, done, _, _ = test_env.step(action)
+                val_episode_rewards.append(reward)
             state = next_state
             states.append(torch.from_numpy(state).float())
+            if len(states) < sequence_length:
+                continue
 
         total_val_rewards.append(sum(val_episode_rewards))
 
