@@ -21,22 +21,22 @@ def objective(trial):
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
-    agent = DQNAgent(len(env.state), action_size, learning_rate=lr, gamma=gamma, batch_size=batch_size)
+    agent = DQNAgent(len(env.state), action_size, learning_rate=lr, gamma=gamma)
 
     # Create the validation environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
 
     # Train the agent and get validation reward
-    validation_reward = train_DQN(env, agent, agent.model, test_env, episodes, sequence_length, model_save_path=f"models/DQN_version_2/lr:{lr}_gamma:{gamma}_batchsize:{batch_size}_actsize:{action_size}.pth", batch_size=batch_size)
+    validation_reward = train_DQN(env, agent, agent.model, test_env, episodes, sequence_length, model_save_path=f"models/DQN_version_4/lr:{lr}_gamma:{gamma}_batchsize:{batch_size}_actsize:{action_size}.pth")
 
     # Write trial results to CSV
-    if not os.path.exists('hyperparameter_tuning_results_DQN_version3.csv'):
-        with open('hyperparameter_tuning_results_version3.csv', 'w', newline='') as f:
+    if not os.path.exists('hyperparameter_tuning_results_DQN_version4.csv'):
+        with open('hyperparameter_tuning_results_version4.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Activation Function', 'Action Size', 'Sequence length', 'Validation Reward'])
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Action Size', 'Sequence length', 'Validation Reward'])
 
-    fields = [trial.number, lr, gamma, batch_size, action_size, sequence_length, validation_reward]
-    with open('hyperparameter_tuning_results_DQN_version3.csv', 'a', newline='') as f:
+    fields = [trial.number, lr, gamma, action_size, sequence_length, validation_reward]
+    with open('hyperparameter_tuning_results_DQN_version4.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
 
@@ -133,7 +133,7 @@ def objective(trial):
  
 #     return avg_val_reward
 
-def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save_path, batch_size=1):
+def train_DQN(env, agent, model, test_env, episodes, sequence_length, model_save_path):
     """
     Function to train the DQN agent.
     """

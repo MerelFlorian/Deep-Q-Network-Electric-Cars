@@ -321,7 +321,7 @@ class DQNAgent:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, activation_fn=torch.relu):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=1000)
@@ -334,8 +334,7 @@ class DQNAgent:
         self.epsilon = 1.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.batch_size = batch_size
-
+    
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
 
@@ -346,33 +345,26 @@ class DQNAgent:
         """
         self.memory.append((state, action, action_index, reward, next_state, done))
 
-    def choose_action(self, state_batch):
-        """
-        Returns actions for a batch of states as per current policy.
-        """
-        # Discretize the action space into action size steps
+    def choose_action(self, state):
+        """Returns actions for given sequence of states as per current policy."""
+        
+        # Discretize the action space into 100 steps
         action_values = np.linspace(-1, 1, self.action_size)
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
-                # Model forward pass with the batch of states
-                q_values = self.model(state_batch)
+                # Model forward pass with sequence of states
+                q_values = self.model(state)
 
-                # Get the indices of the actions with the highest Q-value for each state
-                action_indices = q_values.argmax(dim=2).squeeze()
+                # Get the index of the action with the highest Q-value
+                action_index = np.argmax(q_values.cpu().data.numpy())
 
-                # Select the corresponding action values
-                actions = torch.from_numpy(action_values).float()[action_indices]
-                
-                return action_indices, actions
+                # Return the action with the highest Q-value
+                return action_index, action_values[action_index]
+            
         else:  # Exploration
-            # Generate random action indices for each state in the batch
-            random_action_indices = torch.randint(0, self.action_size, (state_batch.size(1),))
-
-            # Select the corresponding action values
-            random_actions = torch.from_numpy(action_values).float()[random_action_indices]
-
-            return random_action_indices, random_actions
+            action_index = random.randrange(self.action_size)
+            return action_index, action_values[action_index]
         
     def replay(self):
         """
