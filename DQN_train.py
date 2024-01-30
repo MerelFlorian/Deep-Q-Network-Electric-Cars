@@ -6,6 +6,35 @@ import torch
 import optuna
 import os, csv
 
+def validate_agent(test_env, test_agent, states, sequence_length, model, batch_size):
+    """
+    Funtion to validate the agent on a validation set.
+    """
+    test_agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
+    state = test_env.reset()
+    val_rewards, states = [], []
+    done = False
+    hidden_state = model.init_hidden(batch_size)
+
+    # Ensure the state has the correct shape
+    if not isinstance(state, np.ndarray) or state.shape != (len(test_env.state),):
+        state = np.reshape(state, (len(test_env.state),)) 
+
+    while not done:
+        if len(states) < sequence_length:
+            states.append(torch.from_numpy(state).float())
+            continue
+    
+        state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+        action_index, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
+        next_state, reward, done, _, _ = test_env.step(action)
+        val_rewards.append(reward)
+
+        state = next_state
+        states.append(torch.from_numpy(state).float())
+
+    return val_rewards
+
 
 def objective(trial):
     """
@@ -31,9 +60,10 @@ def objective(trial):
 
     # Create the validation environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
+    test_agent = DQNAgentLSTM(len(test_env.state), action_size, learning_rate=lr, gamma=gamma)
 
     # Train the agent and get validation reward
-    validation_reward = train_DQN_LSTM(env, agent, agent.model, test_env, episodes, sequence_length, model_save_path=f"models/DQN_version_4/lr:{lr}_gamma:{gamma}_actsize:{action_size}.pth", batch_size=batch_size)
+    validation_reward = train_DQN_LSTM(env, agent, agent.model, test_env, test_agent, episodes, sequence_length, model_save_path=f"models/DQN_version_4/lr:{lr}_gamma:{gamma}_actsize:{action_size}.pth", batch_size=batch_size)
 
     # Write trial results to CSV
     if not os.path.exists('hyperparameter_tuning_results_DQN_version5.csv'):
@@ -50,7 +80,7 @@ def objective(trial):
     return validation_reward
 
 
-def train_DQN_LSTM(env, agent, model, test_env, episodes, sequence_length, model_save_path, batch_size=1):
+def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_length, model_save_path, batch_size=1):
     """
     Function to train the DQN agent.
     """
@@ -93,37 +123,39 @@ def train_DQN_LSTM(env, agent, model, test_env, episodes, sequence_length, model
                 break
                 
         total_train_rewards.append(sum(episode_rewards))
+        validation_reward = validate_agent(test_env, test_agent, states, sequence_length, model, batch_size)
+        total_val_rewards.append(validation_reward)
 
-        print(f"Episode {episode + 1}: Total Reward: {sum(episode_rewards)}")
+        print(f"Episode {episode + 1}: Train Reward: {sum(episode_rewards)}, Validation Reward: {validation_reward}")
 
-    # Validate the agent
-    agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
-    counter = 0
+    # # Validate the agent
+    # agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
+    # counter = 0
 
-    for episode in range(episodes):
-        state = test_env.reset()
-        val_episode_rewards, states = [], []
-        done = False
-        hidden_state = model.init_hidden(batch_size)
+    # for episode in range(episodes):
+    #     state = test_env.reset()
+    #     val_episode_rewards, states = [], []
+    #     done = False
+    #     hidden_state = model.init_hidden(batch_size)
 
-        # Ensure the state has the correct shape
-        if not isinstance(state, np.ndarray) or state.shape != (len(test_env.state),):
-            state = np.reshape(state, (len(test_env.state),)) 
+    #     # Ensure the state has the correct shape
+    #     if not isinstance(state, np.ndarray) or state.shape != (len(test_env.state),):
+    #         state = np.reshape(state, (len(test_env.state),)) 
 
-        while not done:
-            if len(states) < sequence_length:
-                states.append(torch.from_numpy(state).float())
-                continue
+    #     while not done:
+    #         if len(states) < sequence_length:
+    #             states.append(torch.from_numpy(state).float())
+    #             continue
         
-            state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-            action_index, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
-            next_state, reward, done, _, _ = test_env.step(action)
-            val_episode_rewards.append(reward)
+    #         state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+    #         action_index, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
+    #         next_state, reward, done, _, _ = test_env.step(action)
+    #         val_episode_rewards.append(reward)
 
-            state = next_state
-            states.append(torch.from_numpy(state).float())
+    #         state = next_state
+    #         states.append(torch.from_numpy(state).float())
 
-        total_val_rewards.append(sum(val_episode_rewards))
+    #     total_val_rewards.append(sum(val_episode_rewards))
 
         # Early stopping
         if episode > 0 and len(total_val_rewards) > 1:
