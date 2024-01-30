@@ -6,14 +6,6 @@ import numpy as np
 import optuna
 import sys
 from algorithms import LSTM_PolicyNetwork
-    
-def normalize_rewards(rewards):
-    rewards = np.array(rewards)
-    mean = np.mean(rewards)
-    std = np.std(rewards)
-    if std == 0:
-        return rewards - mean
-    return (rewards - mean) / std
 
 def shape_rewards(state, next_state, action):
     # Initialize the shaped reward
@@ -108,9 +100,6 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
         clipping (int, optional): The gradient clipping value. Defaults to 1.
         save (bool, optional): Whether to save the model. Defaults to False.
     """
-    # Convert the model to half precision
-    policy_network = policy_network.half()
-    
     # Initialize the optimizer
     optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.001)
     batch_size = 1  # Assuming we're dealing with single episodes
@@ -133,22 +122,22 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
             # Prepare the sequence of states
             if len(states) < sequence_length:
                 next_state, reward, done, _, _ = env.step(0)
-                next_state = torch.from_numpy(next_state).float().to(device).half()
+                next_state = torch.from_numpy(next_state).float().to(device)
             else:
-                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Already on the device and in half precision
+                state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)
                 # Policy network forward pass
                 action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
                 normal_dist = torch.distributions.Normal(action_mean, action_std)
                 # Sample an action from the normal distribution
                 sampled_action = normal_dist.sample()
                 # Generate noise to encourage exploration
-                noise = torch.from_numpy(np.random.normal(0, noise_std, size=sampled_action.shape).astype(np.float32)).to(device).half()
+                noise = torch.from_numpy(np.random.normal(0, noise_std, size=sampled_action.shape).astype(np.float32)).to(device)
                 # Add the noise to the action
                 action = sampled_action + noise
                 log_prob = normal_dist.log_prob(action).sum(axis=-1)
                 # Take a step in the environment
                 next_state, reward, done, _, _ = env.step(action.item())
-                next_state = torch.from_numpy(next_state).float().to(device).half()
+                next_state = torch.from_numpy(next_state).float().to(device)
                 # Store the reward and log probability
                 rewards.append(shape_rewards(states[-1], next_state, action) + reward)
                 log_probs.append(log_prob)
@@ -159,7 +148,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 continue
 
         # Compute the returns for the episode
-        returns = compute_returns(normalize_rewards(rewards), gamma).to(device, dtype=torch.float32).half()
+        returns = compute_returns(rewards, gamma).to(device, dtype=torch.float32)
 
         # Compute the policy gradients
         policy_gradient = [-log_prob * R for log_prob, R in zip(log_probs, returns)]
@@ -191,12 +180,12 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                     state = torch.from_numpy(state).float()
                 else:  # If 'state' is already a tensor, just ensure it's the right type
                     state = state.float()
-                state = state.to(device).half()
+                state = state.to(device)
                 states.append(state)
                 if len(states) < sequence_length:
                     next_state, reward, done, _, _ = val_env.step(0)
                 else:
-                    state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Already on the device and in half precision
+                    state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)
                     action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
                     normal_dist = torch.distributions.Normal(action_mean, action_std)
                     action = normal_dist.sample()
@@ -216,7 +205,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 # Early stopping
                 if v_rewards[-1] < v_rewards[-2]:
                     counter += 1
-                    if counter == 3:
+                    if counter == 7:
                         return best_reward
                 else:
                     counter = 0
@@ -246,9 +235,9 @@ if __name__ == "__main__":
                 print(f"    {key}: {value}")
         elif sys.argv[1] == 'train':
             # Create a new model with the best hyperparameters
-            policy_network = LSTM_PolicyNetwork(len(env.state), 1, 256, 1).to("mps")
+            policy_network = LSTM_PolicyNetwork(len(env.state), 1, 64, 2).to("mps")
             # Load the best model weights
-            train_policy_gradient(env, val_env, policy_network, episodes=20, lr=0.009, gamma=0.01, noise_std = 10.9, noise_decay=0.7, clipping=4, sequence_length=22, save=True)
+            train_policy_gradient(env, val_env, policy_network, episodes=50, lr=0.009, gamma=0.29, noise_std = 11, noise_decay=0.83, clipping=7, sequence_length=1, save=True)
         else:
             print('Invalid command line argument. Please use one of the following: tune, train')
             exit()

@@ -1,11 +1,9 @@
 import numpy as np
-import pandas as pd
 from ElectricCarEnv import Electric_Car
 from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgent
 from gym import Env
 from typing import Type, Tuple
 import sys
-from datetime import datetime
 from collections import defaultdict
 from data.data_vis import visualize_bat, plot_revenue
 from utils import clip
@@ -40,7 +38,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
-                log_env['battery'].append(state[0])
+                log_env['battery'].append(state[0] * 25)
                 log_env['availability'].append(state[7])
                 log_env['action'].append(action)
                 log_env['price'].append(state[1])
@@ -61,21 +59,25 @@ def qlearning() -> QLearningAgent:
     Returns:
         QLearningAgent: The Q-learning agent.
     """
-
     # Discretize battery level, time, availability, price
     state_bins = [
-        np.linspace(0, 50, 5),  # Bins for battery level
-        np.arange(0, 25),        # Bins for time
-        np.array([0, 1]),        # Bins for availability
+        np.linspace(0, 50, 4), # Bins for battery level
+        np.arange(0, 25, 4), # Bins for time
+        # np.array([0, 1]), # Bins for availability
         np.concatenate([
-            np.linspace(0, 100, 100),    # Bins for prices between 0 and 100 with 100 bins
-            np.linspace(100, 2500, 4)  # Bins for prices from 100 to 2500 with 3 bins
+            np.linspace(0, 100, 20),  # Bins for prices between 0 and 100 with 32 bins
+            np.linspace(100, 2500, 1)  # Bins for prices from 100 to 2500 with 3 bins
         ])  # Bins for price
     ]
-    # Discretize action bins
-    action_bins = np.linspace(-25, 25, 5000)  # Discretize actions (buy/sell amounts)]
+
+    #  Discretize action bins
+    action_bins = np.linspace(-1, 1, 50)  # Discretize actions (buy/sell amounts)
+
+    # Calculate the size of the Q-table
+    qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
+
     # Create a new agent instance
-    test_agent = QLearningAgent(state_bins, action_bins) 
+    test_agent = QLearningAgent(state_bins, action_bins, qtable_size) 
     # Load the Q-table
     test_agent.q_table = np.load('models/best_q_table_2.npy')
 

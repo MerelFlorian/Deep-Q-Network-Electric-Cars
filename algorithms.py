@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, learning_rate=0.000000000001, discount_factor=0, epsilon=0.8, epsilon_decay=0.9, min_epsilon=0, max_battery=50, shape_weight = 0.8):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0.5, epsilon=1, epsilon_decay=0.9, min_epsilon=0.09, max_battery=50, shape_weight = 0.7):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -20,7 +20,7 @@ class QLearningAgent:
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
-        self.q_table = np.zeros(shape=(len(state_bins[0]), len(state_bins[1]), len(state_bins[2]), len(state_bins[3]), len(action_bins)))
+        self.q_table = np.zeros(qtable_size)
         self.shape_weight = shape_weight
 
     def discretize_state(self, state):
@@ -28,7 +28,7 @@ class QLearningAgent:
         Discretizes the state into a tuple of indices.
         """
         # Extract variables from state
-        battery_level = state[0]
+        battery_level = state[0] * 25
         hour = state[2]
         available = state[7] 
         price = state[1]
@@ -36,9 +36,9 @@ class QLearningAgent:
         # Discretize the state variables
         battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
         time_idx = np.digitize(hour, self.state_bins[1]) - 1
-        availability_idx = int(available)
-        price_idx = np.digitize(price, self.state_bins[3]) - 1
-        return battery_idx, time_idx, availability_idx, price_idx
+        # availability_idx = int(available)
+        price_idx = np.digitize(price, self.state_bins[2]) - 1
+        return battery_idx, time_idx, price_idx
 
     def discretize_action(self, action):
         """
@@ -50,6 +50,9 @@ class QLearningAgent:
         """
         Chooses an action using epsilon-greedy.
         """
+        # Battery  level
+        battery_level = state[0]
+        
         # Ensure state is within valid range
         if not self.is_valid_state(state):
             return 0 
@@ -137,23 +140,23 @@ class QLearningAgent:
         if action > 0:
             # If the price is higher in the next state and lower in the last state, penalize
             if next_price > current_price and current_price < last_price:
-                shaped_reward -= 0.5
+                shaped_reward -= 1
             # If the price is lower in the next state and last state, reward
             elif next_price < current_price and current_price > last_price:
-                shaped_reward += 0.5
+                shaped_reward += 1
         # If action is buying (negative)
         elif action < 0:
             # If the price is lower in the next state and lower in the last state, penalize
             if next_price < current_price and current_price > last_price:
-                shaped_reward -= 0.5
+                shaped_reward -= 1
             # If the price is higher in the next state and last state, reward
             elif next_price > current_price and current_price < last_price:
-                shaped_reward += 0.5
+                shaped_reward += 1
         # If action is 0
         else:
             # If the price is lower in last state and higher in next state or vice versa, reward
             if (last_price < current_price and next_price > current_price) or (last_price > current_price and next_price < current_price):
-                shaped_reward += 0.4
+                shaped_reward += 2
         return shaped_reward
         
 class EMA:
