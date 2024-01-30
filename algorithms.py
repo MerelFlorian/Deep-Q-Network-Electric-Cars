@@ -51,8 +51,6 @@ class QLearningAgent:
         """
         Chooses an action using epsilon-greedy.
         """
-        # Battery  level
-        battery_level = state[0]
         
         # Ensure state is within valid range
         if not self.is_valid_state(state):
@@ -142,31 +140,31 @@ class QLearningAgent:
         if action > 0:
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 4
+                shaped_reward += 100
             # If the agent buys again but the price is lower than the previous price
             if current_price < self.buy_price:
-                shaped_reward += 3
+                shaped_reward += 75
             if current_price > self.sell_price:
-                shaped_reward -= 2
+                shaped_reward -= 50
             if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
-                shaped_reward -= 5
+                shaped_reward -= 150
             self.buy_price = current_price
         # If action is selling
         elif action < 0:
             if current_price >= 2 * self.buy_price:
-                shaped_reward += 4
+                shaped_reward += 100
             if current_price > self.sell_price:
-                shaped_reward += 3
+                shaped_reward += 75
             if current_price < self.buy_price:
-                shaped_reward -= 2
+                shaped_reward -= 50
             self.sell_price = current_price
             if action < max(action, -min(25, state[0] * 0.9)) / 25:
-                shaped_reward -= 5
+                shaped_reward -= 150
         else:
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 3
+                shaped_reward += 75
             if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 1
+                shaped_reward -= 25
         return shaped_reward
         
 class EMA:
