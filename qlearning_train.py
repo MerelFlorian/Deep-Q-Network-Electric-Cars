@@ -72,6 +72,7 @@ def validate_agent(test_env, test_agent, qtable):
         state, reward, done, _,_ =  test_env.step(action)
         # Update the total reward
         total_reward += reward
+    
     return total_reward
   
 def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path):
@@ -80,9 +81,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
     """
     # Initialize the total reward and validation reward
     total_rewards = []
-    total_validation_rewards = []
     highest_reward = -np.inf
-    validation_rewards = []
 
     # Define early stopping criteria
     patience = 5
@@ -118,12 +117,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         total_rewards.append(total_reward)
 
         # Run validation 
-        # validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
         validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
-        total_validation_rewards.append(validation_reward)
-        validation_rewards.append(validation_reward)
-
-
+        
         # Check and update the highest reward and best episode
         if validation_reward > highest_reward:
             highest_reward = validation_reward
@@ -137,7 +132,6 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         # Check for early stopping
         if early_stopping_counter >= patience:
             print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
-            # agent.save(model_save_path)
             save_best_q(best_q_table, highest_reward, best_episode, model_save_path)
             break
 
@@ -146,9 +140,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         
     # Save the best Q-table
     save_best_q(best_q_table, highest_reward, best_episode, model_save_path)
-    #agent.save(model_save_path)
-    avg_val_reward = sum(validation_rewards) / num_episodes
-    return avg_val_reward
+    
+    return highest_reward
 
 if __name__ == "__main__":
 
