@@ -24,7 +24,7 @@ def objective(trial):
     ])  # Bins for price
     ]
 
-     #  Discretize action bins
+    #  Discretize action bins
     action_bins = np.linspace(-1, 1, 50)  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
@@ -53,6 +53,7 @@ def objective(trial):
 
     # Optuna aims to maximize the objective
     return validation_reward
+ 
 
 def validate_agent(test_env, test_agent, qtable):
     # Initialize the total reward
