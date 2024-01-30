@@ -25,14 +25,13 @@ def validate_agent(test_env, test_agent, qtable):
 # Environment and Agent Initialization
 env = Electric_Car("./data/train.xlsx", "./data/f_train.xlsx")
 
-# Discretize battery level, time, availability, price
+# Discretize battery level, time,  price
 state_bins = [
-    np.linspace(0, 50, 4), # Bins for battery level
-    np.arange(0, 25, 4), # Bins for time
-    # np.array([0, 1]), # Bins for availability
+    np.linspace(0, 50, 4), 
+    np.arange(0, 25, 4), 
     np.concatenate([
-        np.linspace(0, 100, 15),  # Bins for prices between 0 and 100 with 32 bins
-        np.linspace(100, 2500, 2)  # Bins for prices from 100 to 2500 with 3 bins
+        np.linspace(0, 100, 15),  
+        np.linspace(100, 2500, 2) 
     ])  # Bins for price
 ]
 
