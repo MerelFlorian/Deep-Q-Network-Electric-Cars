@@ -212,7 +212,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 # Save the model if it's the best one so far
                 if total_reward > best_reward:
                     best_reward = total_reward
-                    if best_reward > 0 and save:
+                    if save:
                         torch.save(policy_network.state_dict(), "models/pg.pth")
 
     print("Training complete")
