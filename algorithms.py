@@ -294,6 +294,9 @@ class BuyLowSellHigh:
       return self.action
   
 class QNetwork(nn.Module):
+    """
+    This class represents the linear neural network used in the DQN algorithm.
+    """
     def __init__(self, state_size, action_size, activation_fn=torch.relu):
         super(QNetwork, self).__init__()
         self.fc1 = nn.Linear(state_size, 256)
@@ -311,13 +314,16 @@ class QNetwork(nn.Module):
         init.kaiming_normal_(self.fc5.weight, mode='fan_in', nonlinearity='linear')
 
     def forward(self, state):
+        """
+        This function computes the forward pass of the neural network.
+        """
         x = self.activation_fn(self.fc1(state))
         x = self.activation_fn(self.fc2(x))
         x = self.activation_fn(self.fc3(x))
         x = self.activation_fn(self.fc4(x))
         return self.fc5(x)
 
-class DQNAgent:
+class DQNAgent_Linear:
     """
     This class represents the DQN agent.
     """
@@ -539,6 +545,9 @@ class DQNAgentLSTM:
         torch.save(self.model.state_dict(), name)
 
 class LSTM_DQN(nn.Module):
+    """
+    This function represents the LSTM neural network used in the DQN algorithm.
+    """
     def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
         super(LSTM_DQN, self).__init__()
         self.action_size = action_size
@@ -548,6 +557,9 @@ class LSTM_DQN(nn.Module):
         self.lstm_layers = lstm_layers
 
     def forward(self, state, hidden_state=None):
+        """
+        This function computes the forward pass of the neural network.
+        """
         # If the state is 2D (no batch dimension), add a batch dimension
         if state.dim() == 2:
             state = state.unsqueeze(0)  # Add batch dimension
@@ -568,6 +580,9 @@ class LSTM_DQN(nn.Module):
         return action_values, hidden_state
 
     def init_hidden(self, batch_size):
+        """
+        This function initializes the hidden state.
+        """
         weight = next(self.parameters()).data
         hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size),
                   weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size))
