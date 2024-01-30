@@ -19,7 +19,7 @@ def objective(trial):
     # Suggest values for the hyperparameters
     shape_weight = trial.suggest_float('shape_weight', 0.0, 0.3)
     epsilon_decay = trial.suggest_float('epsilon_decay', 0.9, 0.96)
-    action_size = trial.categorical('action_size', [10, 25, 50])
+    action_size = trial.suggest_categorical('action_size', [10, 25, 50])
     
     # Discretize battery level, time,  price
     state_bins = [
@@ -148,7 +148,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=50)  
+    study.optimize(objective, n_trials=500)  
 
     print("Best trial:")
     trial = study.best_trial
