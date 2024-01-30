@@ -26,11 +26,11 @@ env = Electric_Car("./data/train.xlsx", "./data/f_train.xlsx")
 # Discretize battery level, time,  price
 state_bins = [
     np.linspace(0, 50, 4), 
-    np.arange(0, 25, 4), 
+    np.array([0, 9, 14, 17, 24]), 
     np.concatenate([
-        np.linspace(0, 100, 15),  
+        np.linspace(0, 100, 20),  
         np.linspace(100, 2500, 2) 
-    ])  # Bins for price
+    ])  
 ]
 
 #  Discretize action bins

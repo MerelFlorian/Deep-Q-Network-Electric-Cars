@@ -172,10 +172,10 @@ def action_to_color(action)-> None:
     Positive actions (buying) are mapped to red, negative (selling) to blue, and zero (doing nothing) to gray.
     """
     # Negative action (buying)
-    if action < 0:
+    if action > 0:
         return (1, 0, 0, 1)  
     # Positive action (selling)
-    elif action > 0:
+    elif action < 0:
         return (0, 0, 1, 1)  
     # Zero action (doing nothing)
     else:
