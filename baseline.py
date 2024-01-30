@@ -1,6 +1,6 @@
 import numpy as np
 from ElectricCarEnv import Electric_Car
-from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgent
+from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgentLSTM
 from gym import Env
 from typing import Type, Tuple
 import sys
@@ -11,7 +11,7 @@ from utils import clip
 # Constants
 NUM_EPISODES = 1 # Define the number of episodes for training
 
-def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgent]) -> None:
+def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
 
     Args:
@@ -30,7 +30,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         # Loop until the episode is done
         while not done:
             # Choose an action
-            if isinstance(agent, DQNAgent):
+            if isinstance(agent, DQNAgentLSTM):
                 _, action, _ = agent.choose_action(state)
                 action = clip(action, state)
             else:
@@ -128,8 +128,8 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     elif sys.argv[1] =="DQN":
         state_size = 34  
         action_size = 500
-        test_agent = DQNAgent(state_size, action_size)
-        test_agent.model = np.load('models/DQN_version_2/lr:0.00033128497824677714_gamma:0.1505085820842485_batchsize:48_actsize:500.pth')
+        test_agent = DQNAgentLSTM(state_size, action_size)
+        test_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
         return test_agent, "DQN"
 
     else: 

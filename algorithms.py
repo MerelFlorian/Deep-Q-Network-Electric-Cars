@@ -441,13 +441,15 @@ class DQNAgentLSTM:
     This class represents the DQN agent.
     """
     def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        self.device = device
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=1000)
         self.gamma = gamma  # discount factor
         self.learning_rate = learning_rate
-        self.model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
-        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1).to(device)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1).to(device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
@@ -500,10 +502,10 @@ class DQNAgentLSTM:
         # Convert sequences in minibatch to tensors and stack them
         state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[0]]).unsqueeze(0) for m in minibatch])
         actions = torch.tensor([m[1] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
-        action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
-        rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32)
+        action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1).to(self.device)
+        rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32).to(self.device)
         next_state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[4]]).unsqueeze(0) for m in minibatch])
-        dones = torch.tensor([m[5] for m in minibatch], dtype=torch.float32)
+        dones = torch.tensor([m[5] for m in minibatch], dtype=torch.float32).to(self.device)
 
         # Compute Q-values for current and next state sequences
         q_values, _ = self.model(state_sequences)
@@ -585,9 +587,10 @@ class LSTM_DQN(nn.Module):
         """
         This function initializes the hidden state.
         """
+        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         weight = next(self.parameters()).data
-        hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size),
-                  weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size))
+        hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device),
+                  weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device))
         return hidden
 
 class LSTM_PolicyNetwork(nn.Module):
