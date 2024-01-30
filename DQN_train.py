@@ -131,10 +131,10 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
         total_val_rewards.append(validation_reward)
 
         print(f"Episode {episode + 1}: Train Reward: {sum(episode_rewards)}, Validation Reward: {validation_reward}")
-
+        counter = 0
     # # Validate the agent
     # agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
-    # counter = 0
+    # 
 
     # for episode in range(episodes):
     #     state = test_env.reset()
@@ -207,7 +207,7 @@ def train_DQN_Linear(env, agent, model, test_env, episodes, model_save_path):
             
             state = next_state
             states.append(torch.from_numpy(state).float())
-                
+
         total_train_rewards.append(sum(episode_rewards))
         print(f"Episode {episode + 1}: Total Reward: {sum(episode_rewards)}")
 

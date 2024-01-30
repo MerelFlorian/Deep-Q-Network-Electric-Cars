@@ -8,23 +8,28 @@ import optuna
 import os, csv
 
 def objective(trial):
-    # Suggest values for the hyperparameters
-    lr = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
-    gamma = trial.suggest_float('gamma', 0, 0)
-    shape_weight = trial.suggest_float('shape_weight', 0.0, 0.3)
-    epsilon_decay = trial.suggest_float('epsilon_decay', 0.9, 1.0)
-
+    """
+    This function defines the hyperparameter space for Optuna to search over.
+    """
+    # Define the hyperparameter space
+    lr = 1e-6
+    gamma = 0.0
     num_episodes = 100
 
+    # Suggest values for the hyperparameters
+    shape_weight = trial.suggest_float('shape_weight', 0.0, 0.3)
+    epsilon_decay = trial.suggest_float('epsilon_decay', 0.9, 0.96)
+    action_size = trial.suggest_categorical('action_size', [10, 25, 50])
+    
     # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
         np.array([0, 9, 14, 17, 24]), 
-        np.append(np.linspace(0, 100, 20), 2500) 
+        np.append(np.linspace(0, 100, 20), [2500])  
     ]
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 20)  # Discretize actions (buy/sell amounts)
+    action_bins = np.linspace(-1, 1, action_size)  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
@@ -43,9 +48,9 @@ def objective(trial):
     if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
         with open('hyperparameter_tuning_results_qlearning.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Validation Reward'])
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Action Size', 'Validation Reward'])
 
-    fields = [trial.number, lr, gamma, shape_weight, epsilon_decay, validation_reward]
+    fields = [trial.number, lr, gamma, shape_weight, epsilon_decay, action_size, validation_reward]
     with open('hyperparameter_tuning_results_qlearning.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
@@ -69,6 +74,7 @@ def validate_agent(test_env, test_agent, qtable):
         state, reward, done, _,_ =  test_env.step(action)
         # Update the total reward
         total_reward += reward
+    
     return total_reward
   
 def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path):
@@ -77,9 +83,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
     """
     # Initialize the total reward and validation reward
     total_rewards = []
-    total_validation_rewards = []
     highest_reward = -np.inf
-    validation_rewards = []
 
     # Define early stopping criteria
     patience = 5
@@ -115,11 +119,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         total_rewards.append(total_reward)
 
         # Run validation 
-        # validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
         validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
-        total_validation_rewards.append(validation_reward)
-        validation_rewards.append(validation_reward)
-
+        
         # Check and update the highest reward and best episode
         if validation_reward > highest_reward:
             highest_reward = validation_reward
@@ -133,7 +134,6 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         # Check for early stopping
         if early_stopping_counter >= patience:
             print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
-            # agent.save(model_save_path)
             save_best_q(best_q_table, highest_reward, best_episode, model_save_path)
             break
 
@@ -142,14 +142,13 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         
     # Save the best Q-table
     save_best_q(best_q_table, highest_reward, best_episode, model_save_path)
-    #agent.save(model_save_path)
-    avg_val_reward = sum(validation_rewards) / num_episodes
-    return avg_val_reward
+    
+    return highest_reward
 
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=50)  
+    study.optimize(objective, n_trials=500)  
 
     print("Best trial:")
     trial = study.best_trial
