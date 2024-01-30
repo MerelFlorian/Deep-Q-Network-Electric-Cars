@@ -7,7 +7,7 @@ import optuna
 import sys
 from algorithms import LSTM_PolicyNetwork
 
-def shape_rewards(state, next_state, action):
+def shape_rewards(state, next_state, action, last_price):
     # Initialize the shaped reward
     shaped_reward = 0
 
@@ -16,28 +16,13 @@ def shape_rewards(state, next_state, action):
     next_price = next_state[1]
     current_time = state[2]
 
-    # If action is selling (positive)
+    # If action is buying (positive)
     if action > 0:
-        # If the price is higher in the next state, penalize
-        if next_price > current_price:
-            shaped_reward -= 1
-        # If the price is lower in the next state, reward
-        elif next_price < current_price:
-            shaped_reward += 1
-        # If the time is between 11-14 or 18-20, small reward
-        if 11 <= current_time <= 14 or 18 <= current_time <= 20:
-            shaped_reward += 0.3
-    # If action is buying (negative)
-    elif action < 0:
-        # If the price is lower in the next state, penalize
-        if next_price < current_price:
-            shaped_reward -= 1
-        # If the price is higher in the next state, reward
-        elif next_price > current_price:
-            shaped_reward += 1
-        # If time is between 3-6, small reward
+        # If the agent buys between 3 am and 6 am 
         if 3 <= current_time <= 6:
-            shaped_reward += 0.3
+            shaped_reward += 1
+        if last_price > current_price and current_price < next_price:
+            shaped_reward += 1
     return shaped_reward
     
 def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:

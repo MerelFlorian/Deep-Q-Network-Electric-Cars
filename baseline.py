@@ -32,7 +32,6 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             # Choose an action
             if isinstance(agent, DQNAgentLSTM):
                 _, action, _ = agent.choose_action(state)
-                action = clip(action, state)
             else:
                 action = clip(agent.choose_action(state), state)
             
@@ -126,8 +125,8 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     elif sys.argv[1] == 'ema':
         return ema(), "EMA"
     elif sys.argv[1] =="DQN":
-        state_size = 34  
-        action_size = 500
+        state_size = 34 
+        action_size = 200
         test_agent = DQNAgentLSTM(state_size, action_size)
         test_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
         return test_agent, "DQN"

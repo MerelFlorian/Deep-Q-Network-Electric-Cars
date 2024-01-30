@@ -7,69 +7,65 @@ from utils import save_best_q
 import optuna
 import os, csv
 
-def objective(trial):
-    """
-    This function defines the hyperparameter space for Optuna to search over.
-    """
-    # Define the hyperparameter space
-    lr = 1e-6
-    gamma = 0.0
-    num_episodes = 100
-
+def objective(trial: optuna.Trial):
     # Suggest values for the hyperparameters
-    shape_weight = trial.suggest_float('shape_weight', 0.0, 0.3)
-    epsilon_decay = trial.suggest_float('epsilon_decay', 0.9, 0.96)
-    action_size = trial.suggest_categorical('action_size', [10, 25, 50])
-    
+    # lr = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
+    # gamma = trial.suggest_float('gamma', 0.85, 0.99)
+    # shape_weight = trial.suggest_float('shape_weight', 0.0, 1.0)
+    # epsilon_decay = trial.suggest_float('epsilon_decay', 0.8, 1.0)
+
+    #action = trial.suggest_int('action_bins', 5, 50)
+
+    num_episodes = 200
+
     # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
         np.array([0, 9, 14, 17, 24]), 
-        np.append(np.linspace(0, 100, 20), [2500])  
+        np.append(np.linspace(0, 100, 20), 2500)
     ]
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, action_size)  # Discretize actions (buy/sell amounts)
+    action_bins = np.linspace(-1, 1, 25)  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
 
-    agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=lr, discount_factor=gamma, epsilon_decay=epsilon_decay, shape_weight=shape_weight)
+    agent = QLearningAgent(state_bins, action_bins, qtable_size)
     # Environment and Agent Initialization
     env = Electric_Car("./data/train.xlsx", "./data/f_train.xlsx")
 
     # Load validation data into the environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
-    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=lr, discount_factor=gamma, epsilon_decay=epsilon_decay, shape_weight=shape_weight) 
+    test_agent = QLearningAgent(state_bins, action_bins, qtable_size) 
 
-    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/lr:{lr}_gamma:{gamma}_shape_weight:{shape_weight}_epsilon_decay:{epsilon_decay}.pth")
+    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/room")
 
-    # Write trial results to CSV
-    if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
-        with open('hyperparameter_tuning_results_qlearning.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Action Size', 'Validation Reward'])
+    # # Write trial results to CSV
+    # if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
+    #     with open('hyperparameter_tuning_results_qlearning.csv', 'w', newline='') as f:
+    #         writer = csv.writer(f)
+    #         writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Validation Reward'])
 
-    fields = [trial.number, lr, gamma, shape_weight, epsilon_decay, action_size, validation_reward]
-    with open('hyperparameter_tuning_results_qlearning.csv', 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(fields)
+    # fields = [trial.number, validation_reward]
+    # with open('hyperparameter_tuning_results_qlearning.csv', 'a', newline='') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerow(fields)
 
     # Optuna aims to maximize the objective
     return validation_reward
  
 
-def validate_agent(test_env, test_agent, qtable):
+def validate_agent(test_env, agent):
     # Initialize the total reward
     total_reward = 0
     # Reset the environment
     state = test_env.reset()
     done = False
-    test_agent.q_table = qtable
     # Loop until the episode is done
     while not done:
         # Choose an action
-        action = test_agent.choose_action(state)
+        action = agent.choose_action(state)
         # Take a step
         state, reward, done, _,_ =  test_env.step(action)
         # Update the total reward
@@ -119,7 +115,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         total_rewards.append(total_reward)
 
         # Run validation 
-        validation_reward = validate_agent(test_env, test_agent, qtable=agent.q_table)
+        validation_reward = validate_agent(test_env, agent)
         
         # Check and update the highest reward and best episode
         if validation_reward > highest_reward:
@@ -148,7 +144,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=500)  
+    study.optimize(objective, n_trials=45)  
 
     print("Best trial:")
     trial = study.best_trial
