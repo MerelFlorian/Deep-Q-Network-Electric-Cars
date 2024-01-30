@@ -427,117 +427,116 @@ class DQNAgent:
         Function to save the model's weights.
         """
         torch.save(self.model.state_dict(), name)
-# class DQNAgent:
-#     """
-#     This class represents the DQN agent.
-#     """
-#     def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
-#         self.state_size = state_size
-#         self.action_size = action_size
-#         self.memory = deque(maxlen=1000)
-#         self.gamma = gamma  # discount factor
-#         self.learning_rate = learning_rate
-#         # self.model = QNetwork(state_size, action_size, activation_fn)
-#         # self.target_model = QNetwork(state_size, action_size, activation_fn)
-#         self.model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
-#         self.target_model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
+
+class DQNAgentLSTM:
+    """
+    This class represents the DQN agent.
+    """
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
+        self.state_size = state_size
+        self.action_size = action_size
+        self.memory = deque(maxlen=1000)
+        self.gamma = gamma  # discount factor
+        self.learning_rate = learning_rate
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1)
         
-#         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-#         self.epsilon = 1.0  # exploration rate
-#         self.epsilon_min = 0.01
-#         self.epsilon_decay = 0.995
-#         self.batch_size = batch_size
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.epsilon = 1.0  # exploration rate
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
+        self.batch_size = batch_size
 
-#         self.train_step_counter = 0  # Counter to track training steps
-#         self.update_target_counter = 0  # Counter to track steps for updating target network
+        self.train_step_counter = 0  # Counter to track training steps
+        self.update_target_counter = 0  # Counter to track steps for updating target network
 
 
-#     def remember(self, state, action, action_index, reward, next_state, done):
-#         """
-#         Function to store a transition in memory.
-#         """
-#         self.memory.append((state, action, action_index, reward, next_state, done))
+    def remember(self, state, action, action_index, reward, next_state, done):
+        """
+        Function to store a transition in memory.
+        """
+        self.memory.append((state, action, action_index, reward, next_state, done))
 
-#     def choose_action(self, state_sequence, hidden_state=None):
-#         """Returns actions for given sequence of states as per current policy."""
+    def choose_action(self, state_sequence, hidden_state=None):
+        """Returns actions for given sequence of states as per current policy."""
         
-#         # Discretize the action space into 100 steps
-#         action_values = np.linspace(-1, 1, self.action_size)
+        # Discretize the action space into 100 steps
+        action_values = np.linspace(-1, 1, self.action_size)
 
-#         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
-#             with torch.no_grad():
-#                 # Model forward pass with sequence of states
-#                 q_values, hidden_state = self.model(state_sequence, hidden_state)
+        if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
+            with torch.no_grad():
+                # Model forward pass with sequence of states
+                q_values, hidden_state = self.model(state_sequence, hidden_state)
 
-#                 # Get the index of the action with the highest Q-value
-#                 action_index = np.argmax(q_values.cpu().data.numpy())
+                # Get the index of the action with the highest Q-value
+                action_index = np.argmax(q_values.cpu().data.numpy())
 
-#                 # Return the action with the highest Q-value
-#                 return action_index, action_values[action_index], hidden_state
+                # Return the action with the highest Q-value
+                return action_index, action_values[action_index], hidden_state
         
-#         else:  # Exploration
-#             action_index = random.randrange(self.action_size)
-#             return action_index, action_values[action_index], hidden_state
+        else:  # Exploration
+            action_index = random.randrange(self.action_size)
+            return action_index, action_values[action_index], hidden_state
         
-#     def replay(self, hidden_state=None):
-#         """
-#         Function to train the neural network on a batch of samples from memory.
-#         """
-#         self.train_step_counter += 1
+    def replay(self, hidden_state=None):
+        """
+        Function to train the neural network on a batch of samples from memory.
+        """
+        self.train_step_counter += 1
 
-#         if len(self.memory) < self.batch_size or self.train_step_counter % 4 != 0:
-#             return  # Train only every 4th step and if enough samples
+        if len(self.memory) < self.batch_size or self.train_step_counter % 4 != 0:
+            return  # Train only every 4th step and if enough samples
 
-#         minibatch = random.sample(self.memory, self.batch_size)
+        minibatch = random.sample(self.memory, self.batch_size)
         
-#         # Convert sequences in minibatch to tensors and stack them
-#         state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[0]]).unsqueeze(0) for m in minibatch])
-#         actions = torch.tensor([m[1] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
-#         action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
-#         rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32)
-#         next_state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[4]]).unsqueeze(0) for m in minibatch])
-#         dones = torch.tensor([m[5] for m in minibatch], dtype=torch.float32)
+        # Convert sequences in minibatch to tensors and stack them
+        state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[0]]).unsqueeze(0) for m in minibatch])
+        actions = torch.tensor([m[1] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
+        action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
+        rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32)
+        next_state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[4]]).unsqueeze(0) for m in minibatch])
+        dones = torch.tensor([m[5] for m in minibatch], dtype=torch.float32)
 
-#         # Compute Q-values for current and next state sequences
-#         q_values, _ = self.model(state_sequences)
-#         next_q_values, _ = self.model(next_state_sequences)
+        # Compute Q-values for current and next state sequences
+        q_values, _ = self.model(state_sequences)
+        next_q_values, _ = self.model(next_state_sequences)
         
-#         # Choose the best Q-value for next states
-#         max_next_q_values = next_q_values.max(dim=1)[0].detach()
+        # Choose the best Q-value for next states
+        max_next_q_values = next_q_values.max(dim=1)[0].detach()
 
-#         # Calculate target Q values
-#         Q_target = rewards + (self.gamma * max_next_q_values * (1 - dones))
+        # Calculate target Q values
+        Q_target = rewards + (self.gamma * max_next_q_values * (1 - dones))
 
-#         # Compute loss
-#         criterion = nn.HuberLoss()
-#         Q_expected = q_values.gather(1, action_indices)
-#         loss = criterion(Q_expected, Q_target.unsqueeze(1))
+        # Compute loss
+        criterion = nn.HuberLoss()
+        Q_expected = q_values.gather(1, action_indices)
+        loss = criterion(Q_expected, Q_target.unsqueeze(1))
 
-#         # Backpropagation
-#         self.optimizer.zero_grad()
-#         loss.backward()
-#         self.optimizer.step()
+        # Backpropagation
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
-#         # Update target network, if needed
-#         self.update_target_counter += 1
-#         if self.update_target_counter % 100000 == 0:
-#             self.target_model.load_state_dict(self.model.state_dict())
+        # Update target network, if needed
+        self.update_target_counter += 1
+        if self.update_target_counter % 100000 == 0:
+            self.target_model.load_state_dict(self.model.state_dict())
 
-#         # Update epsilon
-#         if self.epsilon > self.epsilon_min:
-#             self.epsilon *= self.epsilon_decay
+        # Update epsilon
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
 
-#     def load(self, name):
-#         """
-#         Function to load the model's weights.
-#         """
-#         self.model.load_state_dict(torch.load(name))
+    def load(self, name):
+        """
+        Function to load the model's weights.
+        """
+        self.model.load_state_dict(torch.load(name))
 
-#     def save(self, name):
-#         """
-#         Function to save the model's weights.
-#         """
-#         torch.save(self.model.state_dict(), name)
+    def save(self, name):
+        """
+        Function to save the model's weights.
+        """
+        torch.save(self.model.state_dict(), name)
 
 class LSTM_DQN(nn.Module):
     def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
