@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0.1, max_battery=50, shape_weight = 0.2):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0.1, max_battery=50, shape_weight = 0.5):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -133,24 +133,28 @@ class QLearningAgent:
 
         # Get prices and time from states 
         current_price = state[1]
+        current_time = state[2]
         next_price = next_state[1]
 
         # If action is selling (positive)
         if action > 0:
-            # If the price is higher in the next state and lower in the last state, penalize
-            if next_price > current_price and current_price < last_price:
-                shaped_reward -= 2
-            # If the price is lower in the next state and last state, reward
-            elif next_price < current_price and current_price > last_price:
+            # If the agent buys between 3 am and 6 am 
+            if 3 <= current_time <= 6:
                 shaped_reward += 1
+            # If the price is higher in the next state and higher in the last state, reward
+            if last_price > current_price and current_price < next_price:
+                shaped_reward += 2
+            # If the price is lower in the next state and lower in the last state, penalize    
+            elif last_price < current_price and current_price > next_price:
+                shaped_reward -= 1
         # If action is buying (negative)
         elif action < 0:
-            # If the price is lower in the next state and lower in the last state, penalize
-            if next_price < current_price and current_price > last_price:
-                shaped_reward -= 2
-            # If the price is higher in the next state and last state, reward
-            elif next_price > current_price and current_price < last_price:
-                shaped_reward += 1
+            # If the price is lower in the previous state and higher in the next state, reward
+            if last_price < current_price and current_price > next_price:
+                shaped_reward += 2
+            # If the price is higher in the previous state and lower in the next state, penalize
+            elif last_price > current_price and current_price < next_price:
+                shaped_reward -= 1
         # If action is 0
         else:
             # If the price is lower in last state and higher in next state or vice versa, reward
@@ -448,8 +452,8 @@ class DQNAgentLSTM:
         self.memory = deque(maxlen=1000)
         self.gamma = gamma  # discount factor
         self.learning_rate = learning_rate
-        self.model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1).to(device)
-        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=256, lstm_layers=1).to(device)
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
@@ -501,7 +505,6 @@ class DQNAgentLSTM:
         
         # Convert sequences in minibatch to tensors and stack them
         state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[0]]).unsqueeze(0) for m in minibatch])
-        actions = torch.tensor([m[1] for m in minibatch], dtype=torch.int64).reshape(-1, 1)
         action_indices = torch.tensor([m[2] for m in minibatch], dtype=torch.int64).reshape(-1, 1).to(self.device)
         rewards = torch.tensor([m[3] for m in minibatch], dtype=torch.float32).to(self.device)
         next_state_sequences = torch.stack([torch.stack([torch.tensor(s, dtype=torch.float32) for s in m[4]]).unsqueeze(0) for m in minibatch])

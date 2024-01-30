@@ -41,7 +41,7 @@ class Electric_Car(gym.Env):
         #     raise ValueError('Action must be between -1 and 1')
 
         # Calculate if, at 7am and after the chosen action, the battery level will be below the minimum morning level:
-        if self.hour == 7:
+        if self.hour == 8:
             if action > 0 and (self.battery_level < self.minimum_morning_level):
                 if (
                         self.battery_level + action * self.max_power * self.charge_efficiency) < self.minimum_morning_level:  # If the chosen action will not charge the battery to 20kWh
@@ -61,7 +61,7 @@ class Electric_Car(gym.Env):
                                 self.max_power * self.charge_efficiency)
 
         # There is a 50% chance that the car is unavailable from 8am to 6pm
-        if self.hour == 8:
+        if self.hour == 9:
             self.car_is_available = np.random.choice([True, False])
             if not self.car_is_available:
                 self.battery_level -= self.car_use_consumption

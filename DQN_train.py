@@ -1,7 +1,6 @@
 import numpy as np
 from ElectricCarEnv import Electric_Car
-import pandas as pd
-from algorithms import DQNAgent_Linear, DQNAgentLSTM
+from algorithms import DQNAgentLSTM
 import torch
 import optuna
 import os, csv
@@ -43,18 +42,16 @@ def objective(trial):
     Function to optimize the hyperparameters of the DQN agent.
     """
     # Define the hyperparameter search space using the trial object
-    # lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
-    # gamma = trial.suggest_float("gamma", 0.1, 0.3)
-    # action_size = trial.suggest_categorical("action_size", [100, 200, 500])
+    lr = trial.suggest_float("lr", 1e-3, 1e-2, log=True)
+    gamma = trial.suggest_float("gamma", 0.01, 0.3)
+    action_size = trial.suggest_categorical("action_size", [10, 15, 20, 25])
+    batch_size = trial.suggest_categorical("batch_size", [1, 2, 4, 8, 16, 32, 64, 128])
+
 
     # For LSTM
-    batch_size = trial.suggest_categorical("batch_size", [24, 48, 168]) # 1 day, 2 days, 1 week
-    sequence_length = trial.suggest_categorical("sequence_length", [7, 24, 48]) # 1 week, 1 day, 2 days
+    sequence_length = 1
     
-    episodes = 30
-    lr=0.0014654527516315154
-    gamma=0.7834514859034255
-    action_size=200
+    episodes = 20
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
@@ -253,7 +250,7 @@ def train_DQN_Linear(env, agent, model, test_env, episodes, model_save_path):
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=50)  
+    study.optimize(objective, n_trials=20)  
 
     print("Best trial:")
     trial = study.best_trial
