@@ -8,26 +8,28 @@ import optuna
 import os, csv
 
 def objective(trial):
-    # Suggest values for the hyperparameters
-    lr = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
-    gamma = trial.suggest_float('gamma', 0.85, 0.99)
-    shape_weight = trial.suggest_float('shape_weight', 0.0, 1.0)
-    epsilon_decay = trial.suggest_float('epsilon_decay', 0.8, 1.0)
-
+    """
+    This function defines the hyperparameter space for Optuna to search over.
+    """
+    # Define the hyperparameter space
+    lr = 1e-6
+    gamma = 0.0
     num_episodes = 100
 
+    # Suggest values for the hyperparameters
+    shape_weight = trial.suggest_float('shape_weight', 0.0, 0.3)
+    epsilon_decay = trial.suggest_float('epsilon_decay', 0.9, 0.96)
+    action_size = trial.categorical('action_size', [10, 25, 50])
+    
     # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
         np.array([0, 9, 14, 17, 24]), 
-        np.concatenate([
-            np.linspace(0, 100, 20),  
-            np.linspace(100, 2500, 1) 
-        ])  
+        np.append(np.linspace(0, 100, 20), [2500])  
     ]
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 10)  # Discretize actions (buy/sell amounts)
+    action_bins = np.linspace(-1, 1, action_size)  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
@@ -46,9 +48,9 @@ def objective(trial):
     if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
         with open('hyperparameter_tuning_results_qlearning.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Validation Reward'])
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Action Size', 'Validation Reward'])
 
-    fields = [trial.number, lr, gamma, shape_weight, epsilon_decay, validation_reward]
+    fields = [trial.number, lr, gamma, shape_weight, epsilon_decay, action_size, validation_reward]
     with open('hyperparameter_tuning_results_qlearning.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
