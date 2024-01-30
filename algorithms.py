@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0.5, epsilon=1, epsilon_decay=0.9, min_epsilon=0.09, max_battery=50, shape_weight = 0.5):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0.1, max_battery=50, shape_weight = 0.2):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -139,7 +139,7 @@ class QLearningAgent:
         if action > 0:
             # If the price is higher in the next state and lower in the last state, penalize
             if next_price > current_price and current_price < last_price:
-                shaped_reward -= 1
+                shaped_reward -= 2
             # If the price is lower in the next state and last state, reward
             elif next_price < current_price and current_price > last_price:
                 shaped_reward += 1
@@ -147,7 +147,7 @@ class QLearningAgent:
         elif action < 0:
             # If the price is lower in the next state and lower in the last state, penalize
             if next_price < current_price and current_price > last_price:
-                shaped_reward -= 1
+                shaped_reward -= 2
             # If the price is higher in the next state and last state, reward
             elif next_price > current_price and current_price < last_price:
                 shaped_reward += 1
@@ -155,7 +155,7 @@ class QLearningAgent:
         else:
             # If the price is lower in last state and higher in next state or vice versa, reward
             if (last_price < current_price and next_price > current_price) or (last_price > current_price and next_price < current_price):
-                shaped_reward += 2
+                shaped_reward += 3
         return shaped_reward
         
 class EMA:

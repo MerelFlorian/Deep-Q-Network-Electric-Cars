@@ -1,6 +1,6 @@
 import numpy as np
 from ElectricCarEnv import Electric_Car
-from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgent
+from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgentLSTM
 from gym import Env
 from typing import Type, Tuple
 import sys
@@ -11,7 +11,7 @@ from utils import clip
 # Constants
 NUM_EPISODES = 1 # Define the number of episodes for training
 
-def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgent]) -> None:
+def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
 
     Args:
@@ -30,7 +30,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         # Loop until the episode is done
         while not done:
             # Choose an action
-            if isinstance(agent, DQNAgent):
+            if isinstance(agent, DQNAgentLSTM):
                 _, action, _ = agent.choose_action(state)
                 action = clip(action, state)
             else:
@@ -61,17 +61,19 @@ def qlearning() -> QLearningAgent:
     """
     # Discretize battery level, time, availability, price
     state_bins = [
-        np.linspace(0, 50, 4), # Bins for battery level
-        np.arange(0, 25, 4), # Bins for time
-        # np.array([0, 1]), # Bins for availability
+        np.linspace(0, 50, 4), 
+        np.array([0, 9, 14, 17, 24]), 
         np.concatenate([
-            np.linspace(0, 100, 20),  # Bins for prices between 0 and 100 with 32 bins
-            np.linspace(100, 2500, 1)  # Bins for prices from 100 to 2500 with 3 bins
-        ])  # Bins for price
+            np.linspace(0, 100, 20),  
+            np.linspace(100, 2500, 1) 
+        ])  
     ]
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 50)  # Discretize actions (buy/sell amounts)
+    action_bins = np.concatenate([
+            np.linspace(-1, 0, 5),  # Bins for negative prices
+            np.linspace(0, 1, 10)  # Bins for positive prices
+    ])  
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
@@ -126,8 +128,8 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     elif sys.argv[1] =="DQN":
         state_size = 34  
         action_size = 500
-        test_agent = DQNAgent(state_size, action_size)
-        test_agent.model = np.load('models/DQN_version_2/lr:0.00033128497824677714_gamma:0.1505085820842485_batchsize:48_actsize:500.pth')
+        test_agent = DQNAgentLSTM(state_size, action_size)
+        test_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
         return test_agent, "DQN"
 
     else: 
