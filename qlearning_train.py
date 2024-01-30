@@ -18,16 +18,16 @@ def objective(trial):
 
     # Discretize battery level, time,  price
     state_bins = [
-    np.linspace(0, 50, 4), 
-    np.arange(0, 25, 4), 
-    np.concatenate([
-        np.linspace(0, 100, 15),  
-        np.linspace(100, 2500, 2) 
-    ])  # Bins for price
+        np.linspace(0, 50, 4), 
+        np.array([0, 9, 14, 17, 24]), 
+        np.concatenate([
+            np.linspace(0, 100, 20),  
+            np.linspace(100, 2500, 1) 
+        ])  
     ]
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 50)  # Discretize actions (buy/sell amounts)
+    action_bins = np.linspace(-1, 1, 10)  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
