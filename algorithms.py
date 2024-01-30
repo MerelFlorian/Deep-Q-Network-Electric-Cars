@@ -157,6 +157,12 @@ class QLearningAgent:
             if (last_price < current_price and next_price > current_price) or (last_price > current_price and next_price < current_price):
                 shaped_reward += 2
         return shaped_reward
+    
+    def save(self, name):
+        """
+        Function to save the model's weights.
+        """
+        torch.save(self.model.state_dict(), name)
         
 class EMA:
   """Implements an exponential moving average cross strategy

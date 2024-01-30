@@ -12,6 +12,8 @@ def objective(trial):
     lr = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
     gamma = trial.suggest_float('gamma', 0.85, 0.99)
     shape_weight = trial.suggest_float('shape_weight', 0.0, 1.0)
+    epsilon_decay = trial.suggest_float('epsilon_decay', 0.8, 1.0)
+
     num_episodes = 100
 
     # Discretize battery level, time,  price
@@ -30,23 +32,23 @@ def objective(trial):
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
 
-    agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=lr, discount_factor=gamma)
+    agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=lr, discount_factor=gamma, epsilon_decay=epsilon_decay, shape_weight=shape_weight)
     # Environment and Agent Initialization
     env = Electric_Car("./data/train.xlsx", "./data/f_train.xlsx")
 
     # Load validation data into the environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
-    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=lr, discount_factor=gamma) 
+    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=lr, discount_factor=gamma, epsilon_decay=epsilon_decay, shape_weight=shape_weight) 
 
-    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/lr:{lr}_gamma:{gamma}_shape_weight:{shape_weight}.pth")
+    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/lr:{lr}_gamma:{gamma}_shape_weight:{shape_weight}_epsilon_decay:{epsilon_decay}.pth")
 
     # Write trial results to CSV
     if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
         with open('hyperparameter_tuning_results_qlearning.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Validation Reward'])
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Shape Weight', 'Epsilon Decay','Validation Reward'])
 
-    fields = [trial.number, lr, gamma, shape_weight, validation_reward]
+    fields = [trial.number, lr, gamma, shape_weight, epsilon_decay, validation_reward]
     with open('hyperparameter_tuning_results_qlearning.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
@@ -80,7 +82,6 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
     total_rewards = []
     total_validation_rewards = []
     highest_reward = -np.inf
-    best_battery_levels = 0
     validation_rewards = []
 
     # Define early stopping criteria
@@ -137,7 +138,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         # Check for early stopping
         if early_stopping_counter >= patience:
             print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
-            save_best_q(best_q_table, highest_reward, best_episode, 'best_q_table_3.npy')
+            agent.save(model_save_path)
+            #save_best_q(best_q_table, highest_reward, best_episode, 'best_q_table_3.npy')
             break
 
         # Print the total reward for this episode
