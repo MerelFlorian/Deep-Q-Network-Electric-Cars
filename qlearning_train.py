@@ -25,8 +25,13 @@ def objective(trial: optuna.Trial):
         np.append(np.linspace(0, 100, 20), 2500)
     ]
 
-    #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 25)  # Discretize actions (buy/sell amounts)
+    # Discretize action bins
+    actions = 25
+    mid = int((actions - 1) / 2)
+
+    action_bins = np.concatenate((
+        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, 1, mid)
+    ))  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
@@ -79,7 +84,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
     """
     # Initialize the total reward and validation reward
     total_rewards = []
-    highest_reward = -np.inf
+    prev = -np.inf
 
     # Define early stopping criteria
     patience = 5
@@ -118,7 +123,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         validation_reward = validate_agent(test_env, agent)
         
         # Check and update the highest reward and best episode
-        if validation_reward > highest_reward:
+        if prev < validation_reward:
             highest_reward = validation_reward
             best_episode = episode
             best_q_table = agent.q_table.copy()
@@ -126,6 +131,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         else:
             early_stopping_counter += 1
             print(f"Early stopping counter: {early_stopping_counter}")
+
+        prev = validation_reward
 
         # Check for early stopping
         if early_stopping_counter >= patience:

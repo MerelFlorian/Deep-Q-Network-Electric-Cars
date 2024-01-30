@@ -140,26 +140,14 @@ class QLearningAgent:
         if action > 0:
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 1
-            # If the price is higher in the next state and higher in the last state, reward
-            if last_price > current_price and current_price < next_price:
                 shaped_reward += 2
-            # If the price is lower in the next state and lower in the last state, penalize    
-            elif last_price < current_price and current_price > next_price:
-                shaped_reward -= 1
-        # If action is buying (negative)
         elif action < 0:
-            # If the price is lower in the previous state and higher in the next state, reward
-            if last_price < current_price and current_price > next_price:
-                shaped_reward += 2
-            # If the price is higher in the previous state and lower in the next state, penalize
-            elif last_price > current_price and current_price < next_price:
-                shaped_reward -= 1
-        # If action is 0
+            
+            
         else:
             # If the price is lower in last state and higher in next state or vice versa, reward
             if (last_price < current_price and next_price > current_price) or (last_price > current_price and next_price < current_price):
-                shaped_reward += 3
+                shaped_reward += 2
         return shaped_reward
         
 class EMA:
