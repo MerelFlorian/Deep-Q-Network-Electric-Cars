@@ -44,7 +44,7 @@ def objective(trial: optuna.Trial):
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
     test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=1e-6, shape_weight=1) 
 
-    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/room")
+    validation_reward = train_qlearning(env, agent, num_episodes, test_env, model_save_path=f"models/Qlearning/room")
 
     # # Write trial results to CSV
     # if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
