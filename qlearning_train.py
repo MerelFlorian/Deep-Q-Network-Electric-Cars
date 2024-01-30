@@ -21,7 +21,7 @@ def objective(trial: optuna.Trial):
     # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
-        np.array([0, 9, 14, 17, 24]), 
+        np.array([1, 9, 14, 17, 24]), 
         np.append(np.linspace(0, 100, 20), 2500)
     ]
     
