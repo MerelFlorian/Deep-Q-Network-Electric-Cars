@@ -129,7 +129,6 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
             highest_reward = validation_reward
             best_episode = episode
             best_q_table = agent.q_table.copy()
-            best_battery_levels = battery_levels.copy()
             early_stopping_counter = 0  # Reset early stopping counter
         else:
             early_stopping_counter += 1
@@ -138,16 +137,16 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         # Check for early stopping
         if early_stopping_counter >= patience:
             print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
-            agent.save(model_save_path)
-            #save_best_q(best_q_table, highest_reward, best_episode, 'best_q_table_3.npy')
+            # agent.save(model_save_path)
+            save_best_q(best_q_table, highest_reward, best_episode, model_save_path)
             break
 
         # Print the total reward for this episode
         print(f"Episode {episode} reward: {total_reward} | Validation reward: {validation_reward} | epsilon: {agent.epsilon} | 0s in Q-table: {np.sum(agent.q_table == 0) / agent.q_table.size}")
         
     # Save the best Q-table
-    #save_best_q(best_q_table, highest_reward, best_episode, 'best_q_table_3.npy')
-    agent.save(model_save_path)
+    save_best_q(best_q_table, highest_reward, best_episode, model_save_path)
+    #agent.save(model_save_path)
     avg_val_reward = sum(validation_rewards) / num_episodes
     return avg_val_reward
 
