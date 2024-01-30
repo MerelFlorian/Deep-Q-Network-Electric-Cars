@@ -10,9 +10,9 @@ import os, csv
 def objective(trial):
     # Suggest values for the hyperparameters
     lr = trial.suggest_float('lr', 1e-5, 1e-1, log=True)
-    gamma = trial.suggest_float('gamma', 0.85, 0.99)
-    shape_weight = trial.suggest_float('shape_weight', 0.0, 1.0)
-    epsilon_decay = trial.suggest_float('epsilon_decay', 0.8, 1.0)
+    gamma = trial.suggest_float('gamma', 0, 0)
+    shape_weight = trial.suggest_float('shape_weight', 0.0, 0.3)
+    epsilon_decay = trial.suggest_float('epsilon_decay', 0.9, 1.0)
 
     num_episodes = 100
 
@@ -20,14 +20,11 @@ def objective(trial):
     state_bins = [
         np.linspace(0, 50, 4), 
         np.array([0, 9, 14, 17, 24]), 
-        np.concatenate([
-            np.linspace(0, 100, 20),  
-            np.linspace(100, 2500, 1) 
-        ])  
+        np.append(np.linspace(0, 100, 20), 2500) 
     ]
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 10)  # Discretize actions (buy/sell amounts)
+    action_bins = np.linspace(-1, 1, 20)  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
@@ -123,7 +120,6 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         total_validation_rewards.append(validation_reward)
         validation_rewards.append(validation_reward)
 
-
         # Check and update the highest reward and best episode
         if validation_reward > highest_reward:
             highest_reward = validation_reward
@@ -162,5 +158,3 @@ if __name__ == "__main__":
     print("Params: ")
     for key, value in trial.params.items():
         print(f"{key}: {value}")
-
-    
