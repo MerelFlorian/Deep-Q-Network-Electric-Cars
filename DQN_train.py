@@ -22,16 +22,18 @@ def validate_agent(test_env, test_agent, states, sequence_length, model, batch_s
 
     while not done:
         if len(states) < sequence_length:
-            states.append(torch.from_numpy(state).float())
-            continue
-    
-        state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-        action_index, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
-        next_state, reward, done, _, _ = test_env.step(action)
+            next_state, reward, done, _, _ = test_env.step(0)
+        else:
+            state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+            action_index, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
+            next_state, reward, done, _, _ = test_env.step(action)
+        
         val_rewards.append(reward)
+        state = torch.from_numpy(next_state).float().to(test_agent.device)
+        states.append(state)
 
-        state = next_state
-        states.append(torch.from_numpy(state).float())
+        if len(states) < sequence_length:
+            continue 
 
     return val_rewards
 
@@ -101,11 +103,13 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
             # Prepare the sequence of states
             if len(states) < sequence_length:
                 next_state, reward, done, _, _ = env.step(0)
+                next_state = torch.from_numpy(next_state).float().to(agent.device)
             else:
                 state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
                 action_index, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
 
                 next_state, reward, done, _, _ = env.step(action)
+                next_state = torch.from_numpy(next_state).float().to(agent.device)
                 episode_rewards.append(reward)
                 agent.remember(state, action, action_index, reward, next_state, done)
 
@@ -114,7 +118,7 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                     agent.replay()
               
             state = next_state
-            states.append(torch.from_numpy(state).float())
+            states.append(state)
             
             if len(states) < sequence_length:
                 continue
@@ -123,7 +127,7 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                 break
                 
         total_train_rewards.append(sum(episode_rewards))
-        validation_reward = validate_agent(test_env, test_agent, states, sequence_length, model, batch_size)
+        validation_reward = sum(validate_agent(test_env, test_agent, states, sequence_length, model, batch_size))
         total_val_rewards.append(validation_reward)
 
         print(f"Episode {episode + 1}: Train Reward: {sum(episode_rewards)}, Validation Reward: {validation_reward}")
