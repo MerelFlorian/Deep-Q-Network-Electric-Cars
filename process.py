@@ -18,14 +18,14 @@ def compute_stats(data: dict, df: pd.DataFrame, min: int, max: int) -> dict:
         # Compute the exponential moving averages with the specified span
         data[f'{i}EMA'] = pd.Series(df).ewm(span=i, adjust=False).mean()
 
-    for n in [50, 100, 200]:
-        # Compute the moving averages with the specified window
-        data[f'{n}MA'] = pd.Series(df).rolling(window=n, min_periods=1).mean()
+    # for n in [50, 100, 200]:
+    #     # Compute the moving averages with the specified window
+    #     data[f'{n}MA'] = pd.Series(df).rolling(window=n, min_periods=1).mean()
     
     # Compute the expanding average
-    data['ExMA'] = pd.Series(df).expanding(min_periods=1).mean()
-    # Compute the expanding std
-    data['ExStd'] = pd.Series(df).expanding(min_periods=1).std().fillna(0)
+    # data['ExMA'] = pd.Series(df).expanding(min_periods=1).mean()
+    # # Compute the expanding std
+    # data['ExStd'] = pd.Series(df).expanding(min_periods=1).std().fillna(0)
 
     return data
 
