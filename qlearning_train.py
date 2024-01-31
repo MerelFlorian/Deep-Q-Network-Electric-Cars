@@ -134,6 +134,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         
         prev = validation_reward
 
+        prev = validation_reward
+
         # Check for early stopping
         if early_stopping_counter >= patience:
             print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
