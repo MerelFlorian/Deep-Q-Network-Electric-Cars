@@ -8,7 +8,7 @@ pip install -r requirements.txt
 ```
 
 ## Algorithms
-We implemented 5 algorithms in total, 2 baselines (EMA and BLSH) and 3 Reinforcement learning algorithms (Q-learning, DQN and PG). 
+We implemented 5 algorithms in total, 2 baselines (EMA and BLSH) and 3 Reinforcement learning algorithms (Q-learning, DQN and PG). Change data/validate.xlsx to the desired dataset. 
 
 To run EMA: 
 ```sh
