@@ -181,34 +181,6 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
 
         print(f"Episode {episode + 1}: Train Reward: {sum(episode_rewards)}, Validation Reward: {validation_reward}")
         counter = 0
-    # # Validate the agent
-    # agent.epsilon = 0  # Set epsilon to 0 to use the learned policy without exploration
-    # 
-
-    # for episode in range(episodes):
-    #     state = test_env.reset()
-    #     val_episode_rewards, states = [], []
-    #     done = False
-    #     hidden_state = model.init_hidden(batch_size)
-
-    #     # Ensure the state has the correct shape
-    #     if not isinstance(state, np.ndarray) or state.shape != (len(test_env.state),):
-    #         state = np.reshape(state, (len(test_env.state),)) 
-
-    #     while not done:
-    #         if len(states) < sequence_length:
-    #             states.append(torch.from_numpy(state).float())
-    #             continue
-        
-    #         state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-    #         action_index, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
-    #         next_state, reward, done, _, _ = test_env.step(action)
-    #         val_episode_rewards.append(reward)
-
-    #         state = next_state
-    #         states.append(torch.from_numpy(state).float())
-
-    #     total_val_rewards.append(sum(val_episode_rewards))
 
         # Early stopping
         if episode > 0 and len(total_val_rewards) > 1:

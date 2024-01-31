@@ -18,14 +18,14 @@ def compute_stats(data: dict, df: pd.DataFrame, min: int, max: int) -> dict:
         # Compute the exponential moving averages with the specified span
         data[f'{i}EMA'] = pd.Series(df).ewm(span=i, adjust=False).mean()
 
-    for n in [50, 100, 200]:
-        # Compute the moving averages with the specified window
-        data[f'{n}MA'] = pd.Series(df).rolling(window=n, min_periods=1).mean()
+    # for n in [50, 100, 200]:
+    #     # Compute the moving averages with the specified window
+    #     data[f'{n}MA'] = pd.Series(df).rolling(window=n, min_periods=1).mean()
     
     # Compute the expanding average
-    data['ExMA'] = pd.Series(df).expanding(min_periods=1).mean()
-    # Compute the expanding std
-    data['ExStd'] = pd.Series(df).expanding(min_periods=1).std().fillna(0)
+    # data['ExMA'] = pd.Series(df).expanding(min_periods=1).mean()
+    # # Compute the expanding std
+    # data['ExStd'] = pd.Series(df).expanding(min_periods=1).std().fillna(0)
 
     return data
 
@@ -84,8 +84,8 @@ def create_features(path: str, save_to="features.xlsx") -> None:
     df = df.drop(columns=['date', 'Day', 'Month']).values.flatten()
 
     new_data = {
-        'Season': np.repeat(date_df['Month'].apply(season), 24).reset_index(drop=True),
-        'Weekend': np.repeat(date_df['Day'].apply(weekend), 24).reset_index(drop=True),
+        # 'Season': np.repeat(date_df['Month'].apply(season), 24).reset_index(drop=True),
+        # 'Weekend': np.repeat(date_df['Day'].apply(weekend), 24).reset_index(drop=True),
     }
 
     # Compute the moving averages
@@ -98,4 +98,5 @@ def create_features(path: str, save_to="features.xlsx") -> None:
     new_df.to_excel(save_to, index=False)
 
 # Example usage
+create_features('data/train.xlsx', 'data/f_train.xlsx')
 create_features('data/validate.xlsx', 'data/f_val.xlsx')
