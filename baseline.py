@@ -1,12 +1,13 @@
 import numpy as np
 from ElectricCarEnv import Electric_Car
-from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgentLSTM
+from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgentLSTM, LSTM_PolicyNetwork
 from gym import Env
 from typing import Type, Tuple
 import sys
 from collections import defaultdict
 from data.data_vis import visualize_bat
 from utils import clip
+from data.data_vis import plot_revenue
 
 # Constants
 NUM_EPISODES = 1 # Define the number of episodes for training
@@ -131,7 +132,6 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         test_agent = DQNAgentLSTM(state_size, action_size)
         test_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
         return test_agent, "DQN"
-
     else: 
         return "all", "All"
         
@@ -158,7 +158,19 @@ if test_agent == "all":
     ema_performance, ema_log_env = validate_agent(env, ema_agent)
     print(f"Average reward on validation set for ema: {ema_performance}")
 
-    # plot_revenue(ql_log_env, blsh_log_env, ema_log_env)
+    # Validate DQN Agent
+    dqn_agent = DQNAgentLSTM(34, 200)
+    dqn_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
+    dqn_performance, dqn_log_env = validate_agent(env, dqn_agent)
+    print(f"Average reward on validation set for dqn: {dqn_performance}")
+
+    # Validate PG Agent
+    pg_agent = LSTM_PolicyNetwork(10, 1, 48, 1)
+    pg_agent.model = np.load('models/PG.pth')
+    pg_performance, pg_log_env = validate_agent(env, pg_agent)
+    print(f"Average reward on validation set for pg: {pg_performance}")
+
+    plot_revenue(ql_log_env, blsh_log_env, ema_log_env, dqn_log_env, pg_log_env)
 
 else:
     test_performance, log_env = validate_agent(env, test_agent)

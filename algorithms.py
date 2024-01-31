@@ -157,12 +157,12 @@ class QLearningAgent:
                 shaped_reward += 40
             # Save the buy price
             self.buys = np.append(self.buys, current_price)
-            # # If short EMA is less than long EMA, buying is encouraged
-            # if ema_3 < ema_7:
-            #     shaped_reward += 5
-            # # If short EMA is less than long EMA, buying is discouraged
-            # elif ema_3 > ema_7:
-            #     shaped_reward -= 5
+            # If short EMA is less than long EMA, buying is encouraged
+            if ema_3 < ema_7:
+                shaped_reward += 5
+            # If short EMA is less than long EMA, buying is discouraged
+            elif ema_3 > ema_7:
+                shaped_reward -= 5
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
@@ -178,12 +178,12 @@ class QLearningAgent:
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
                 shaped_reward -= 10 
-            # If short EMA is less than long EMA, selling is discouraged
-            if ema_3 < ema_7:
-                shaped_reward -= 5
-            # if Long EMA is less than short EMA, selling is encouraged
-            elif ema_3 > ema_7:
-                shaped_reward += 10
+            # # If short EMA is less than long EMA, selling is discouraged
+            # if ema_3 < ema_7:
+            #     shaped_reward -= 5
+            # # if Long EMA is less than short EMA, selling is encouraged
+            # elif ema_3 > ema_7:
+            #     shaped_reward += 10
             # Save the sell price
             self.buys = np.array([])
         else:
