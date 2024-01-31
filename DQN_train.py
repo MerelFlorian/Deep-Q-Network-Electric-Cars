@@ -5,89 +5,6 @@ import torch
 import optuna
 import os, csv
 
-def reward_shaping(self, state, next_state, action, last_price):
-    """Shape the reward such that buying low and selling high is encouraged. 
-
-    Args:
-        state (list): The current state of the environment.
-        next_state (list): The next state of the environment.
-        action (float): The action taken at the current time step.
-
-    Returns:
-        float: The shaped reward.
-    """
-    # Initialize the shaped reward
-    shaped_reward = 0
-
-    # Get prices, time and features from states 
-    current_price = state[1]
-    current_time = state[2]
-    next_price = next_state[1]
-    available = state[7]
-    battery_level = state[0]
-
-    buy_price = 0 if len(self.buys) == 0 else np.mean(self.buys)
-
-    # If action is buying)
-    if action > 0:
-        # Compute the maximum amount of energy that can be bought
-        max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
-        # If the agent buys between 3 am and 6 am 
-        if 3 <= current_time <= 6:
-            shaped_reward += 3
-        # If the agent buys at a price less than 30
-        if current_price <= 30:
-            shaped_reward += 6
-        # If the agent buys at a price greater than 70
-        if current_price >= 70:
-            shaped_reward -= 5
-        if battery_level == 50:
-            shaped_reward -= 10
-        # If the agent buys before 3 am or after 6 am
-        if current_time < 3 or current_time > 6:
-            shaped_reward -= 5
-        # If the agent buys again but the price is 5% higher than the previous price
-        if buy_price and current_price > buy_price * 1.05:
-            shaped_reward -= 1
-        # If the agent buys more than the maximum amount of energy that can be bought
-        if action > max_buy / 4.1:
-            shaped_reward -= 1
-        # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
-        if action <= max_buy / 8.2:
-            shaped_reward += 3
-        # Save the buy price
-        self.buys = np.append(self.buys, current_price)
-    # If action is selling
-    elif action < 0:
-        # Compute the maximum amount of energy that can be sold
-        max_sell = max(action, -min(25, battery_level * 0.9)) / 25
-        # If the agent sells at a price equal to or greater than the buy price
-        if buy_price and current_price >= 2 * buy_price / 0.9:
-            shaped_reward += 16
-        # If the agent sells at a price greater than 66
-        if current_price >= 66 and buy_price:
-            shaped_reward += 10
-        # If the agent sells at a price less than twice the buy price
-        if buy_price and current_price < 2 * buy_price / 0.9:
-            shaped_reward -= 16
-        if not buy_price:
-            shaped_reward -= 5
-        # If the agent sells more than the maximum amount of energy that can be sold
-        if action < max_sell:
-            shaped_reward -= 1
-        # Save the sell price
-        self.buys = np.array([])
-    else:
-        # If the agent is unavailable between 9 am and 7 pm
-        if 9 <= current_time <= 19 and not available:
-            shaped_reward += 5
-        # If the price is not a peak or a trough
-        if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-            shaped_reward += 0.1
-        # If the price is a peak or a trough
-        if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-            shaped_reward -= 0.2
-    return shaped_reward
 
 def validate_agent(test_env, test_agent, states, sequence_length, model, batch_size):
     """
@@ -131,7 +48,7 @@ def objective(trial):
     sequence_length = trial.suggest_int("sequence_length", 1, 30)
 
     gamma = 0
-    action_size = 24
+    action_size = 12
     episodes = 20
 
     # Create the environment and agent
@@ -190,12 +107,13 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                 next_state, reward, done, _, _ = env.step(action)
                 next_state = torch.from_numpy(next_state).float().to(agent.device)
                 episode_rewards.append(reward)
-                shaped_reward, buy_price, sell_price = reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
+                shaped_reward = agent.reward_shaping(state, next_state, action, last_price)
                 agent.remember(state, action, action_index, shaped_reward + reward, next_state, done)
 
                 # Experience replay
                 if len(agent.memory) > agent.batch_size:
                     agent.replay()
+
             last_price = state[1]
             state = next_state 
             states.append(state)
