@@ -84,6 +84,7 @@ def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
     # Initialize the total reward and validation reward
     total_rewards = []
     prev = -np.inf
+    highest_reward = -np.inf
 
     # Define early stopping criteria
     patience = 4
@@ -120,12 +121,15 @@ def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
 
         # Run validation 
         validation_reward = validate_agent(test_env, agent)
-        
-        # Check and update the highest reward and best episode
-        if prev < validation_reward:
+
+        # Save the best Q-table
+        if validation_reward > highest_reward:
             highest_reward = validation_reward
             best_episode = episode
             best_q_table = agent.q_table.copy()
+        
+        # Check and update the highest reward and best episode
+        if prev < validation_reward:
             early_stopping_counter = 0  # Reset early stopping counter
         else:
             early_stopping_counter += 1
