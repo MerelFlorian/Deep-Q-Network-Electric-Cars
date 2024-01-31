@@ -5,6 +5,56 @@ import torch
 import optuna
 import os, csv
 
+def reward_shaping(state, next_state, action, last_price, buy_price, sell_price):
+        """Shape the reward such that buying low and selling high is encouraged. 
+
+        Args:
+            state (list): The current state of the environment.
+            next_state (list): The next state of the environment.
+            action (float): The action taken at the current time step.
+
+        Returns:
+            float: The shaped reward.
+        """
+        # Initialize the shaped reward
+        shaped_reward = 0
+
+        # Get prices and time from states 
+        current_price = state[1]
+        current_time = state[2]
+        next_price = next_state[1]
+
+        # If action is buying)
+        if action > 0:
+            # If the agent buys between 3 am and 6 am 
+            if 3 <= current_time <= 6:
+                shaped_reward += 4
+            # If the agent buys again but the price is lower than the previous price
+            if current_price < buy_price:
+                shaped_reward += 3
+            if current_price > sell_price:
+                shaped_reward -= 2
+            if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
+                shaped_reward -= 5
+            buy_price = current_price
+        # If action is selling
+        elif action < 0:
+            if current_price >= 2 * buy_price:
+                shaped_reward += 4
+            if current_price > sell_price:
+                shaped_reward += 3
+            if current_price < buy_price:
+                shaped_reward -= 2
+            sell_price = current_price
+            if action < max(action, -min(25, state[0] * 0.9)) / 25:
+                shaped_reward -= 5
+        else:
+            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
+                shaped_reward += 3
+            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
+                shaped_reward -= 1
+        return shaped_reward, buy_price, sell_price
+
 def validate_agent(test_env, test_agent, states, sequence_length, model, batch_size):
     """
     Funtion to validate the agent on a validation set.
@@ -91,6 +141,7 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
         done = False
         states, episode_rewards = [], []
         hidden_state = model.init_hidden(batch_size)
+        last_price, buy_price, sell_price = 0, 0, 0
         
         # Ensure the state has the correct shape
         if not isinstance(state, np.ndarray) or state.shape != (len(env.state),):
@@ -108,13 +159,14 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                 next_state, reward, done, _, _ = env.step(action)
                 next_state = torch.from_numpy(next_state).float().to(agent.device)
                 episode_rewards.append(reward)
-                agent.remember(state, action, action_index, reward, next_state, done)
+                shaped_reward, buy_price, sell_price = reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
+                agent.remember(state, action, action_index, shaped_reward + reward, next_state, done)
 
                 # Experience replay
                 if len(agent.memory) > agent.batch_size:
                     agent.replay()
-              
-            state = next_state
+            last_price = state[1]
+            state = next_state 
             states.append(state)
             
             if len(states) < sequence_length:

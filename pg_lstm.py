@@ -132,7 +132,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
         # Reset the environment
         state = env.reset()
         # Initialize the lists to store the states, rewards and log probabilities
-        states, rewards, log_probs = [], [], []
+        states, rewards, total_reward, log_probs = [], [], 0, []
         hidden_state = policy_network.init_hidden(device, batch_size)
         done = False
 
@@ -140,7 +140,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
             # Prepare the sequence of states
             if len(states) < sequence_length:
                 next_state, reward, done, _, _ = env.step(0)
-                next_state = torch.from_numpy(next_state).float().to(device)
+                next_state = torch.from_numpy(next_state[:8]).float().to(device)
             else:
                 state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)
                 # Policy network forward pass
@@ -155,10 +155,12 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 log_prob = normal_dist.log_prob(action).sum(axis=-1)
                 # Take a step in the environment
                 next_state, reward, done, _, _ = env.step(action.item())
-                next_state = torch.from_numpy(next_state).float().to(device)
+                next_state = torch.from_numpy(next_state[:8]).float().to(device)
                 # Store the reward and log probability
                 shaped_reward, buy_price, sell_price = reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
                 rewards.append(shaped_reward + reward)
+                total_reward += reward
+
                 log_probs.append(log_prob)
             last_price = state[1]
             state = next_state
@@ -185,7 +187,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
         # Decay the noise
         noise_std *= noise_decay
 
-        print(f"Episode {episode + 1}/{episodes}: Total training reward: {sum(rewards)}") 
+        print(f"Episode {episode + 1}/{episodes}: Total training reward: {total_reward}") 
 
         states = []
 
@@ -200,7 +202,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 else:  # If 'state' is already a tensor, just ensure it's the right type
                     state = state.float()
                 state = state.to(device)
-                states.append(state)
+                states.append(state[:8])
                 if len(states) < sequence_length:
                     next_state, reward, done, _, _ = val_env.step(0)
                 else:
@@ -254,9 +256,9 @@ if __name__ == "__main__":
                 print(f"    {key}: {value}")
         elif sys.argv[1] == 'train':
             # Create a new model with the best hyperparameters
-            policy_network = LSTM_PolicyNetwork(len(env.state), 1, 64, 2).to("mps")
+            policy_network = LSTM_PolicyNetwork(8, 1, 48, 1).to("mps")
             # Load the best model weights
-            train_policy_gradient(env, val_env, policy_network, episodes=50, lr=0.009, gamma=0.29, noise_std = 11, noise_decay=0.83, clipping=7, sequence_length=1, save=True)
+            train_policy_gradient(env, val_env, policy_network, episodes=50, lr=0.009, gamma=0.1, noise_std = 10, noise_decay=0.85, clipping=8, sequence_length=7, save=True)
         else:
             print('Invalid command line argument. Please use one of the following: tune, train')
             exit()
