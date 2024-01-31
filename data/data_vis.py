@@ -566,14 +566,27 @@ if __name__ == "__main__":
 
     # Concatinate them
     df = pd.concat([df_train, df_val])
+    # List of years
+    years = df['date'].dt.year.unique()
 
-    # Remove date column
-    df = df.drop("date", axis = 1)
+    # Create a new DataFrame to store mean values for each year
+    mean_table = pd.DataFrame()
 
-    # Make table with summary statistics per hour 
-    hourly_means = df.mean()
+    # Loop over years
+    for year in years:
+        # Filter df for year
+        df_year = df[df['date'].dt.year == year]
 
-    # Save df.mean to table
-    hourly_means.to_csv('../data/hourly_means.csv')
+        # Remove date row
+        df_year = df_year.drop('date', axis=1)
+
+        # Calculate mean for each column
+        yearly_means = df_year.mean()
+
+        # Add mean values as a column to mean_table
+        mean_table[year] = yearly_means.round(2)
+
+    # Save mean_table to CSV
+    mean_table.to_csv('../data/yearly_hourly_means.csv')
 
 
