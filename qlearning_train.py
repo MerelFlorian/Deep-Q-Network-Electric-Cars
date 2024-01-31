@@ -16,7 +16,7 @@ def objective(trial: optuna.Trial):
 
     #action = trial.suggest_int('action_bins', 5, 50)
 
-    num_episodes = 200
+    num_episodes = 100
 
     # Discretize battery level, time,  price
     state_bins = [
@@ -42,9 +42,8 @@ def objective(trial: optuna.Trial):
 
     # Load validation data into the environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
-    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=1e-6, shape_weight=1) 
 
-    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/room")
+    validation_reward = train_qlearning(env, agent, num_episodes, test_env, model_save_path=f"models/Qlearning/room")
 
     # # Write trial results to CSV
     # if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
@@ -131,8 +130,6 @@ def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
         else:
             early_stopping_counter += 1
             print(f"Early stopping counter: {early_stopping_counter}")
-        
-        prev = validation_reward
 
         prev = validation_reward
 
