@@ -143,27 +143,27 @@ class QLearningAgent:
             max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 25
+                shaped_reward += 3
             # If the agent buys at a price less than 30
             if current_price <= 30:
-                shaped_reward += 50
+                shaped_reward += 6
             # If the agent buys at a price greater than 70
             if current_price >= 70:
-                shaped_reward -= 50
+                shaped_reward -= 5
             if battery_level == 50:
-                shaped_reward -= 80
+                shaped_reward -= 10
             # If the agent buys before 3 am or after 6 am
             if current_time < 3 or current_time > 6:
-                shaped_reward -= 30
+                shaped_reward -= 5
             # If the agent buys again but the price is 5% higher than the previous price
             if buy_price and current_price > buy_price * 1.05:
-                shaped_reward -= 10
+                shaped_reward -= 1
             # If the agent buys more than the maximum amount of energy that can be bought
             if action > max_buy / 4.1:
-                shaped_reward -= 10
+                shaped_reward -= 1
             # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
             if action <= max_buy / 8.2:
-                shaped_reward += 30
+                shaped_reward += 3
             # Save the buy price
             self.buys = np.append(self.buys, current_price)
         # If action is selling
@@ -172,29 +172,30 @@ class QLearningAgent:
             max_sell = max(action, -min(25, battery_level * 0.9)) / 25
             # If the agent sells at a price equal to or greater than the buy price
             if buy_price and current_price >= 2 * buy_price / 0.9:
-                shaped_reward += 160
+                shaped_reward += 16
+            # If the agent sells at a price greater than 66
             if current_price >= 66 and buy_price:
-                shaped_reward += 100
+                shaped_reward += 10
             # If the agent sells at a price less than twice the buy price
             if buy_price and current_price < 2 * buy_price / 0.9:
-                shaped_reward -= 30
+                shaped_reward -= 16
             if not buy_price:
-                shaped_reward -= 50
+                shaped_reward -= 5
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
-                shaped_reward -= 10 
+                shaped_reward -= 1
             # Save the sell price
             self.buys = np.array([])
         else:
             # If the agent is unavailable between 9 am and 7 pm
             if 9 <= current_time <= 19 and not available:
-                shaped_reward += 10
+                shaped_reward += 5
             # If the price is not a peak or a trough
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 1
+                shaped_reward += 0.1
             # If the price is a peak or a trough
             if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 2
+                shaped_reward -= 0.2
         return shaped_reward
         
 class EMA:
