@@ -558,3 +558,22 @@ def table_summary(df: pd.DataFrame) -> None:
 
     # Save the table to a csv file
     df_table.to_csv('../data/summary_statistics.csv')
+
+if __name__ == "__main__":
+    # Load train and val dataset
+    df_train = clean_data('../data/train.xlsx')
+    df_val = clean_data('../data/validate.xlsx')
+
+    # Concatinate them
+    df = pd.concat([df_train, df_val])
+
+    # Remove date column
+    df = df.drop("date", axis = 1)
+
+    # Make table with summary statistics per hour 
+    hourly_means = df.mean()
+
+    # Save df.mean to table
+    hourly_means.to_csv('../data/hourly_means.csv')
+
+
