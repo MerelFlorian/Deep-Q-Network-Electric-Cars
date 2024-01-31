@@ -60,21 +60,20 @@ def qlearning() -> QLearningAgent:
     Returns:
         QLearningAgent: The Q-learning agent.
     """
-    # Discretize battery level, time, availability, price
+    # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
-        np.array([0, 9, 14, 17, 24]), 
-        np.concatenate([
-            np.linspace(0, 100, 20),  
-            np.linspace(100, 2500, 1) 
-        ])  
+        np.array([1, 9, 14, 17, 24]), 
+        np.append(np.linspace(0, 100, 20), 2500)
     ]
+    
+    actions = 17
+    mid = int((actions - 1) / 2)
 
     #  Discretize action bins
-    action_bins = np.concatenate([
-            np.linspace(-1, 0, 5),  # Bins for negative prices
-            np.linspace(0, 1, 10)  # Bins for positive prices
-    ])  
+    action_bins = np.concatenate((
+        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, 1, mid)
+    ))  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
