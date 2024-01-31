@@ -137,33 +137,43 @@ class QLearningAgent:
 
         # If action is buying)
         if action > 0:
+            # Compute the maximum amount of energy that can be bought
+            max_buy = min(action, min(25,  (50 - state[0]) * 0.9)) / 25
+
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 4
-            # If the agent buys again but the price is lower than the previous price
-            if current_price < self.buy_price:
-                shaped_reward += 3
+                shaped_reward += 10
+            # If the agent buys again but the price is higher than the previous price
             if current_price > self.sell_price:
-                shaped_reward -= 2
-            if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
                 shaped_reward -= 5
+            # If the agent buys more than the maximum amount of energy that can be bought
+            if action > max_buy:
+                shaped_reward -= 5
+            # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
+            if max_buy / 8.2 <= action <= max_buy / 2.05:
+                shaped_reward += 10
+            # Save the buy price
             self.buy_price = current_price
         # If action is selling
         elif action < 0:
+            # Compute the maximum amount of energy that can be sold
+            max_sell = max(action, -min(25, state[0] * 0.9)) / 25
+            # If the agent sells at twice a higher price than the buy price
             if current_price >= 2 * self.buy_price:
-                shaped_reward += 4
-            if current_price > self.sell_price:
-                shaped_reward += 3
+                shaped_reward += 10
+            # If the agent sells at a higher price than the buy price
             if current_price < self.buy_price:
-                shaped_reward -= 2
-            self.sell_price = current_price
-            if action < max(action, -min(25, state[0] * 0.9)) / 25:
                 shaped_reward -= 5
+            # If the agent sells more than the maximum amount of energy that can be sold
+            if action < max_sell:
+                shaped_reward -= 10
+            # Save the sell price
+            self.sell_price = current_price
         else:
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 3
+                shaped_reward += 1
             if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 1
+                shaped_reward -= 2
         return shaped_reward
         
 class EMA:
