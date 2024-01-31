@@ -35,7 +35,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             elif isinstance(agent, QLearningAgent):
                 action = agent.choose_action(state)
             else:
-                action = clip(agent.choose_action(state))
+                action = clip(agent.choose_action(state), state)
             
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:

@@ -12,6 +12,7 @@ import datetime
 from matplotlib.patches import Patch
 import scipy.stats as stats
 import scikit_posthocs as sp
+import numpy as np
 
 
 # Functions
@@ -189,8 +190,23 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
         df (pd.DataFrame): DataFrame containing the data
         algorithm (str): Algorithm used
     """
-    # Convert defaultdict to DataFrame and limit the data to 3 days
-    df = pd.DataFrame(df).head(72)
+    # Change list to pandas dataframe
+    df = pd.DataFrame(df)
+
+    # Calculate the total number of rows in the DataFrame
+    total_rows = len(df)
+
+    # Ensure there are at least 72 rows available for selection
+    if total_rows >= 72:
+        # Generate a random starting index within the valid range
+        random_start_index = np.random.randint(0, total_rows - 71)  # Ensure at least 72 rows are remaining
+        
+        # Select the contiguous subset of 72 rows
+        df = df.iloc[random_start_index:random_start_index + 72]
+        
+        # Now you can use random_72_rows_df for plotting or further analysis
+    else:
+        print("DataFrame doesn't have enough rows for selection.")
 
     # Combine date and hour to datetime and add 30 mins to each hour
     df['date'] = df['date'] + pd.to_timedelta(df['hour'] - 1, unit='H') + pd.to_timedelta(30, unit='m')
