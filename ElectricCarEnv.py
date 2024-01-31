@@ -65,7 +65,7 @@ class Electric_Car(gym.Env):
             self.car_is_available = np.random.choice([True, False])
             if not self.car_is_available:
                 self.battery_level -= self.car_use_consumption
-        if self.hour == 18:
+        if self.hour == 19:
             self.car_is_available = True
         if not self.car_is_available:
             action = 0

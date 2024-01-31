@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0, max_battery=50, shape_weight = 1):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0.05, epsilon=1, epsilon_decay=0.95, min_epsilon=0, max_battery=50, shape_weight = 1):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -22,8 +22,9 @@ class QLearningAgent:
         self.min_epsilon = min_epsilon
         self.q_table = np.zeros(qtable_size)
         self.shape_weight = shape_weight
-        self.buy_price = 0
-        self.sell_price = 0
+        self.buys = np.array([])
+        self.sells = np.array([])
+        self.buy_c = 0
 
     def discretize_state(self, state):
         """	
@@ -67,8 +68,6 @@ class QLearningAgent:
         """
         Updates the Q-table using Q-learning.
         """
-        # Print reward and price, action
-        # print(f"Reward: {reward} | Price: {state[1]}, action: {action}, battery_level: {state[0]}, available: {state[7]}")
 
         # Skip update if state is invalid
         if not self.is_valid_state(state) or not self.is_valid_state(next_state):
@@ -135,6 +134,8 @@ class QLearningAgent:
         current_time = state[2]
         next_price = next_state[1]
 
+        buy_price = 0 if len(self.buys) == 0 else np.mean(self.buys)
+
         # If action is buying)
         if action > 0:
             # Compute the maximum amount of energy that can be bought
@@ -142,33 +143,35 @@ class QLearningAgent:
 
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 10
-            # If the agent buys again but the price is higher than the previous price
-            if current_price > self.sell_price:
-                shaped_reward -= 5
+                shaped_reward += 40
+            # If the agent buys again but the price is 5% higher than the previous price
+            if current_price > buy_price * 1.05:
+                shaped_reward -= 10
             # If the agent buys more than the maximum amount of energy that can be bought
-            if action > max_buy:
-                shaped_reward -= 5
+            if action > max_buy / 4.1:
+                shaped_reward -= 10
             # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
-            if max_buy / 8.2 <= action <= max_buy / 2.05:
-                shaped_reward += 10
+            if action <= max_buy / 8.2:
+                shaped_reward += 40
             # Save the buy price
-            self.buy_price = current_price
+            self.buys = np.append(self.buys, current_price)
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
             max_sell = max(action, -min(25, state[0] * 0.9)) / 25
+            if 11 <= current_time <= 13 or 18 <= current_time <= 20:
+                shaped_reward += 5
             # If the agent sells at twice a higher price than the buy price
-            if current_price >= 2 * self.buy_price:
-                shaped_reward += 10
-            # If the agent sells at a higher price than the buy price
-            if current_price < self.buy_price:
-                shaped_reward -= 5
+            if buy_price and current_price >= 2 * buy_price:
+                shaped_reward += 200
+            # If the agent sells at a lower price than the buy price
+            if buy_price and current_price < 2 * buy_price:
+                shaped_reward -= 3 * buy_price / current_price
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
                 shaped_reward -= 10
             # Save the sell price
-            self.sell_price = current_price
+            self.buys = np.array([])
         else:
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
                 shaped_reward += 1

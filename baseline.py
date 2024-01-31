@@ -68,11 +68,11 @@ def qlearning() -> QLearningAgent:
     ]
     
     actions = 17
-    mid = int((actions - 1) / 2)
+    mid = int((actions - 1) / 4)
 
     #  Discretize action bins
     action_bins = np.concatenate((
-        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, 1, mid)
+        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, 1, actions - 1)
     ))  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
