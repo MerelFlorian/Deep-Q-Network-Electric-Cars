@@ -15,21 +15,21 @@ def objective(trial: optuna.Trial):
 
     #action = trial.suggest_int('action_bins', 5, 50)
 
-    num_episodes = 100
+    num_episodes = 200
 
     # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
-        np.array([1, 9, 14, 17, 24]), 
-        np.append(np.linspace(0, 100, 20), 2500)
+        np.array([1, 7, 14, 17, 24]), 
+        np.append(np.linspace(0, 100, 10), 2500),
+        np.array([0, 1])
     ]
-    
-    actions = 17
-    mid = int((actions - 1) / 4)
+
+    mid = 4
 
     #  Discretize action bins
     action_bins = np.concatenate((
-        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, 1, actions - 1)
+        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, .5, 6), np.array([.75, 1])
     ))  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
