@@ -16,12 +16,12 @@ def objective(trial: optuna.Trial):
 
     #action = trial.suggest_int('action_bins', 5, 50)
 
-    num_episodes = 100
+    num_episodes = 200
 
     # Discretize battery level, time,  price
     state_bins = [
         np.linspace(0, 50, 4), 
-        np.array([0, 9, 14, 17, 24]), 
+        np.array([1, 9, 14, 17, 24]), 
         np.append(np.linspace(0, 100, 20), 2500)
     ]
     
@@ -78,7 +78,7 @@ def validate_agent(test_env, agent):
     
     return total_reward
   
-def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path):
+def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
     """
     Function to train a Q-learning agent.
     """
@@ -87,7 +87,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
     prev = -np.inf
 
     # Define early stopping criteria
-    patience = 5
+    patience = 4
     early_stopping_counter = 0
 
     # Loop through the episodes
@@ -153,7 +153,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
 if __name__ == "__main__":
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=45)  
+    study.optimize(objective, n_trials=1)  
 
     print("Best trial:")
     trial = study.best_trial

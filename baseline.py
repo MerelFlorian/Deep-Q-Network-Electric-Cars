@@ -5,7 +5,7 @@ from gym import Env
 from typing import Type, Tuple
 import sys
 from collections import defaultdict
-from data.data_vis import visualize_bat, plot_revenue
+from data.data_vis import visualize_bat
 from utils import clip
 
 # Constants
@@ -32,8 +32,10 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             # Choose an action
             if isinstance(agent, DQNAgentLSTM):
                 _, action, _ = agent.choose_action(state)
+            elif isinstance(agent, QLearningAgent):
+                action = agent.choose_action(state)
             else:
-                action = clip(agent.choose_action(state), state)
+                action = clip(agent.choose_action(state))
             
             # Log current state and action if last episode
             if episode == NUM_EPISODES - 1:
@@ -80,7 +82,7 @@ def qlearning() -> QLearningAgent:
     # Create a new agent instance
     test_agent = QLearningAgent(state_bins, action_bins, qtable_size) 
     # Load the Q-table
-    test_agent.q_table = np.load('models/best_q_table_2.npy')
+    test_agent.q_table = np.load('models/Qlearning/room.npy')
 
     # Return the agent
     return test_agent
