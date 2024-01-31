@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0.3, epsilon=1, epsilon_decay=0.95, min_epsilon=0.1, max_battery=50, shape_weight = 0.5):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0.1, max_battery=50, shape_weight = 0.5):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -142,31 +142,31 @@ class QLearningAgent:
         if action > 0:
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 4
+                shaped_reward += 100
             # If the agent buys again but the price is lower than the previous price
             if current_price < self.buy_price:
-                shaped_reward += 3
+                shaped_reward += 75
             if current_price > self.sell_price:
-                shaped_reward -= 2
+                shaped_reward -= 50
             if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
-                shaped_reward -= 5
+                shaped_reward -= 150
             self.buy_price = current_price
         # If action is selling
         elif action < 0:
             if current_price >= 2 * self.buy_price:
-                shaped_reward += 4
+                shaped_reward += 100
             if current_price > self.sell_price:
-                shaped_reward += 3
+                shaped_reward += 75
             if current_price < self.buy_price:
-                shaped_reward -= 2
+                shaped_reward -= 50
             self.sell_price = current_price
             if action < max(action, -min(25, state[0] * 0.9)) / 25:
-                shaped_reward -= 5
+                shaped_reward -= 150
         else:
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 3
+                shaped_reward += 75
             if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 1
+                shaped_reward -= 25
         return shaped_reward
         
 class EMA:
