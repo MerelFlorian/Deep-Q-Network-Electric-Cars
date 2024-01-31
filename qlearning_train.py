@@ -1,11 +1,10 @@
 import numpy as np
 from ElectricCarEnv import Electric_Car
 from algorithms import QLearningAgent
-import matplotlib.pyplot as plt
-import pandas as pd
 from utils import save_best_q
 import optuna
 import os, csv
+from copy import deepcopy
 
 def objective(trial: optuna.Trial):
     # Suggest values for the hyperparameters
@@ -126,7 +125,7 @@ def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
         if validation_reward > highest_reward:
             highest_reward = validation_reward
             best_episode = episode
-            best_q_table = agent.q_table.copy()
+            best_q_table = deepcopy(agent.q_table)
         
         # Check and update the highest reward and best episode
         if prev < validation_reward:

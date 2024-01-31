@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0, max_battery=50, shape_weight = 0.5):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0, max_battery=50, shape_weight = 1):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -51,9 +51,6 @@ class QLearningAgent:
         """
         Chooses an action using epsilon-greedy.
         """
-        # Battery  level
-        battery_level = state[0]
-        
         # Ensure state is within valid range
         if not self.is_valid_state(state):
             return 0 
