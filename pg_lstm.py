@@ -7,23 +7,55 @@ import optuna
 import sys
 from algorithms import LSTM_PolicyNetwork
 
-def shape_rewards(state, next_state, action, last_price):
-    # Initialize the shaped reward
-    shaped_reward = 0
+def reward_shaping(state, next_state, action, last_price, buy_price, sell_price):
+        """Shape the reward such that buying low and selling high is encouraged. 
 
-    # Get prices and time from states 
-    current_price = state[1]
-    next_price = next_state[1]
-    current_time = state[2]
+        Args:
+            state (list): The current state of the environment.
+            next_state (list): The next state of the environment.
+            action (float): The action taken at the current time step.
 
-    # If action is buying (positive)
-    if action > 0:
-        # If the agent buys between 3 am and 6 am 
-        if 3 <= current_time <= 6:
-            shaped_reward += 1
-        if last_price > current_price and current_price < next_price:
-            shaped_reward += 1
-    return shaped_reward
+        Returns:
+            float: The shaped reward.
+        """
+        # Initialize the shaped reward
+        shaped_reward = 0
+
+        # Get prices and time from states 
+        current_price = state[1]
+        current_time = state[2]
+        next_price = next_state[1]
+
+        # If action is buying)
+        if action > 0:
+            # If the agent buys between 3 am and 6 am 
+            if 3 <= current_time <= 6:
+                shaped_reward += 4
+            # If the agent buys again but the price is lower than the previous price
+            if current_price < buy_price:
+                shaped_reward += 3
+            if current_price > sell_price:
+                shaped_reward -= 2
+            if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
+                shaped_reward -= 5
+            buy_price = current_price
+        # If action is selling
+        elif action < 0:
+            if current_price >= 2 * buy_price:
+                shaped_reward += 4
+            if current_price > sell_price:
+                shaped_reward += 3
+            if current_price < buy_price:
+                shaped_reward -= 2
+            sell_price = current_price
+            if action < max(action, -min(25, state[0] * 0.9)) / 25:
+                shaped_reward -= 5
+        else:
+            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
+                shaped_reward += 3
+            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
+                shaped_reward -= 1
+        return shaped_reward, buy_price, sell_price
     
 def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
     """ Computes the discounted returns for a list of rewards.
@@ -94,6 +126,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
     # Keep track of the validation rewards
     v_rewards = []
     counter = 0
+    buy_price, sell_price, last_price = 0, 0, 0
 
     for episode in range(episodes):
         # Reset the environment
@@ -124,9 +157,10 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 next_state, reward, done, _, _ = env.step(action.item())
                 next_state = torch.from_numpy(next_state).float().to(device)
                 # Store the reward and log probability
-                rewards.append(shape_rewards(states[-1], next_state, action) + reward)
+                shaped_reward, buy_price, sell_price = reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
+                rewards.append(shaped_reward + reward)
                 log_probs.append(log_prob)
-
+            last_price = state[1]
             state = next_state
             states.append(state)
             if len(states) < sequence_length:

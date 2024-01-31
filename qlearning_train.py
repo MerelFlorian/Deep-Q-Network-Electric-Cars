@@ -16,7 +16,7 @@ def objective(trial: optuna.Trial):
 
     #action = trial.suggest_int('action_bins', 5, 50)
 
-    num_episodes = 200
+    num_episodes = 100
 
     # Discretize battery level, time,  price
     state_bins = [
@@ -24,9 +24,14 @@ def objective(trial: optuna.Trial):
         np.array([0, 9, 14, 17, 24]), 
         np.append(np.linspace(0, 100, 20), 2500)
     ]
+    
+    actions = 17
+    mid = int((actions - 1) / 2)
 
     #  Discretize action bins
-    action_bins = np.linspace(-1, 1, 25)  # Discretize actions (buy/sell amounts)
+    action_bins = np.concatenate((
+        np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, 1, mid)
+    ))  # Discretize actions (buy/sell amounts)
 
     # Calculate the size of the Q-table
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
@@ -37,7 +42,7 @@ def objective(trial: optuna.Trial):
 
     # Load validation data into the environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
-    test_agent = QLearningAgent(state_bins, action_bins, qtable_size) 
+    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=1e-6, shape_weight=1) 
 
     validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/room")
 
@@ -79,7 +84,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
     """
     # Initialize the total reward and validation reward
     total_rewards = []
-    highest_reward = -np.inf
+    prev = -np.inf
 
     # Define early stopping criteria
     patience = 5
@@ -118,7 +123,7 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         validation_reward = validate_agent(test_env, agent)
         
         # Check and update the highest reward and best episode
-        if validation_reward > highest_reward:
+        if prev < validation_reward:
             highest_reward = validation_reward
             best_episode = episode
             best_q_table = agent.q_table.copy()
@@ -126,6 +131,8 @@ def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_p
         else:
             early_stopping_counter += 1
             print(f"Early stopping counter: {early_stopping_counter}")
+        
+        prev = validation_reward
 
         # Check for early stopping
         if early_stopping_counter >= patience:
