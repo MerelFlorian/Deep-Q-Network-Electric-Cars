@@ -46,7 +46,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
                 log_env['date'].append(env.timestamps[env.day - 1])
                 log_env['hour'].append(env.hour)                
             # Take a step
-            state, reward, done, _,_ = env.step(action)
+            state, reward, done, _, _ = env.step(action)
             # Update the total reward
             total_reward += reward
             # log_env['revenue'].append(total_reward)
@@ -79,7 +79,7 @@ def qlearning() -> QLearningAgent:
     qtable_size = [bin.shape[0] for bin in state_bins] + [action_bins.shape[0]]
 
     # Create a new agent instance
-    test_agent = QLearningAgent(state_bins, action_bins, qtable_size) 
+    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, epsilon=0) 
     # Load the Q-table
     test_agent.q_table = np.load('models/Qlearning/room.npy')
 
