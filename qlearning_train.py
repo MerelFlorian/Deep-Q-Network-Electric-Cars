@@ -42,9 +42,7 @@ def objective(trial: optuna.Trial):
 
     # Load validation data into the environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
-    test_agent = QLearningAgent(state_bins, action_bins, qtable_size, learning_rate=1e-6, shape_weight=1) 
-
-    validation_reward = train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path=f"models/Qlearning/room")
+    validation_reward = train_qlearning(env, agent, num_episodes, test_env, model_save_path=f"models/Qlearning/room")
 
     # # Write trial results to CSV
     # if not os.path.exists('hyperparameter_tuning_results_qlearning.csv'):
@@ -85,6 +83,7 @@ def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
     # Initialize the total reward and validation reward
     total_rewards = []
     prev = -np.inf
+    highest_reward = -np.inf
 
     # Define early stopping criteria
     patience = 4
@@ -121,19 +120,20 @@ def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
 
         # Run validation 
         validation_reward = validate_agent(test_env, agent)
-        
-        # Check and update the highest reward and best episode
-        if prev < validation_reward:
+
+        # Save the best Q-table
+        if validation_reward > highest_reward:
             highest_reward = validation_reward
             best_episode = episode
             best_q_table = agent.q_table.copy()
+        
+        # Check and update the highest reward and best episode
+        if prev < validation_reward:
             early_stopping_counter = 0  # Reset early stopping counter
         else:
             early_stopping_counter += 1
             print(f"Early stopping counter: {early_stopping_counter}")
         
-        prev = validation_reward
-
         prev = validation_reward
 
         # Check for early stopping
