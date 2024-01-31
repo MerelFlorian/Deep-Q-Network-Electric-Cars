@@ -51,8 +51,6 @@ class QLearningAgent:
         """
         Chooses an action using epsilon-greedy.
         """
-        # Battery  level
-        battery_level = state[0]
         
         # Ensure state is within valid range
         if not self.is_valid_state(state):

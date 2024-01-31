@@ -16,7 +16,7 @@ def objective(trial: optuna.Trial):
 
     #action = trial.suggest_int('action_bins', 5, 50)
 
-    num_episodes = 100
+    num_episodes = 200
 
     # Discretize battery level, time,  price
     state_bins = [
@@ -78,7 +78,7 @@ def validate_agent(test_env, agent):
     
     return total_reward
   
-def train_qlearning(env, agent, num_episodes, test_env, test_agent, model_save_path):
+def train_qlearning(env, agent, num_episodes, test_env, model_save_path):
     """
     Function to train a Q-learning agent.
     """
