@@ -11,7 +11,7 @@ class QLearningAgent:
     """
     Implements a simple tabular Q-learning agent for the electric car trading problem.
     """	
-    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0.01, epsilon=1, epsilon_decay=0.97, min_epsilon=0, max_battery=50, shape_weight = 1):
+    def __init__(self, state_bins, action_bins, qtable_size, learning_rate=0.000001, discount_factor=0, epsilon=1, epsilon_decay=0.95, min_epsilon=0, max_battery=50, shape_weight = 1):
         self.state_bins = state_bins
         self.action_bins = action_bins
         self.max_battery = max_battery
@@ -133,16 +133,26 @@ class QLearningAgent:
         current_time = state[2]
         next_price = next_state[1]
         available = state[7]
+        battery_level = state[0]
 
         buy_price = 0 if len(self.buys) == 0 else np.mean(self.buys)
 
         # If action is buying)
         if action > 0:
             # Compute the maximum amount of energy that can be bought
-            max_buy = min(action, min(25,  (50 - state[0]) * 0.9)) / 25
+            max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 40
+                shaped_reward += 25
+            # If the agent buys at a price less than 30
+            if current_price <= 30:
+                shaped_reward += 50
+            # If the agent buys at a price greater than 70
+            if current_price >= 70:
+                shaped_reward -= 50
+            if battery_level == 50:
+                shaped_reward -= 80
+            # If the agent buys before 3 am or after 6 am
             if current_time < 3 or current_time > 6:
                 shaped_reward -= 30
             # If the agent buys again but the price is 5% higher than the previous price
@@ -159,13 +169,17 @@ class QLearningAgent:
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
-            max_sell = max(action, -min(25, state[0] * 0.9)) / 25
+            max_sell = max(action, -min(25, battery_level * 0.9)) / 25
             # If the agent sells at a price equal to or greater than the buy price
-            if buy_price and current_price >= 2 * buy_price:
+            if buy_price and current_price >= 2 * buy_price / 0.9:
                 shaped_reward += 160
+            if current_price >= 66 and buy_price:
+                shaped_reward += 100
             # If the agent sells at a price less than twice the buy price
-            if buy_price and current_price < 2 * buy_price:
-                shaped_reward -= 20
+            if buy_price and current_price < 2 * buy_price / 0.9:
+                shaped_reward -= 30
+            if not buy_price:
+                shaped_reward -= 50
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
                 shaped_reward -= 10 
