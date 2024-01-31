@@ -509,9 +509,11 @@ class DQNAgentLSTM:
 
     def choose_action(self, state_sequence, hidden_state=None):
         """Returns actions for given sequence of states as per current policy."""
-        
-        # Discretize the action space into 100 steps
-        action_values = np.linspace(-1, 1, self.action_size)
+        mid = 4
+        #  Discretize action bins
+        action_values = np.concatenate((
+            np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, .5, 6), np.array([.75, 1])
+        ))  # Discretize actions (buy/sell amounts)
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
