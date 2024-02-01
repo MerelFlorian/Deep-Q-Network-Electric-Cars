@@ -202,7 +202,7 @@ if test_agent == "all":
     print(f"Average reward on validation set for q learning: {q_performance}")
 
     # Validate BuyLowSellHigh Agent
-    blsh_agent = buylowsellhigh(env)
+    blsh_agent = buylowsellhigh()
     blsh_performance, blsh_log_env = validate_agent(env, blsh_agent)
     print(f"Average reward on validation set for blsh: {blsh_performance}")
 

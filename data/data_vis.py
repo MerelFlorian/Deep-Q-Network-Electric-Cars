@@ -25,7 +25,6 @@ def clean_data(file: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Cleaned DataFrame
     """
-
     # Import data as pandas dataframe
     df = pd.read_excel(file)
     # Remove all columns after 24th column
@@ -562,39 +561,9 @@ def table_summary(df: pd.DataFrame) -> None:
     # Save the table to a csv file
     df_table.to_csv('../data/summary_statistics.csv')
 
-if __name__ == "__main__":
-    # Load train and val dataset
-    df_train = clean_data('train.xlsx')
-    df_val = clean_data('validate.xlsx')
-
 
     
-    dfs = candlestick_format(df_train, 'weekly')
-    candlestick(dfs, ['2007', '2008', '2009'])
 
-    # # Concatinate them
-    # df = pd.concat([df_train, df_val])
-    # # List of years
-    # years = df['date'].dt.year.unique()
-
-    # # Create a new DataFrame to store mean values for each year
-    # mean_table = pd.DataFrame()
-
-    # # Loop over years
-    # for year in years:
-    #     # Filter df for year
-    #     df_year = df[df['date'].dt.year == year]
-
-    #     # Remove date row
-    #     df_year = df_year.drop('date', axis=1)
-
-    #     # Calculate mean for each column
-    #     yearly_means = df_year.mean()
-
-    #     # Add mean values as a column to mean_table
-    #     mean_table[year] = yearly_means.round(2)
-
-    # # Save mean_table to CSV
-    # mean_table.to_csv('../data/yearly_hourly_means.csv')
+   
 
 
