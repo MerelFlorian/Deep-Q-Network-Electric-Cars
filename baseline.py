@@ -68,7 +68,7 @@ def qlearning() -> QLearningAgent:
         np.append(np.linspace(0, 100, 10), 2500),
         np.array([0, 1])
     ]
-    
+
     mid = 4
 
     #  Discretize action bins

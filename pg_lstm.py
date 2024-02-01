@@ -7,7 +7,7 @@ import optuna
 import sys
 from algorithms import LSTM_PolicyNetwork
 
-def reward_shaping(state, next_state, action, last_price, buy_price, sell_price):
+def reward_shaping(buys, state, next_state, action, last_price):
         """Shape the reward such that buying low and selling high is encouraged. 
 
         Args:
@@ -21,41 +21,75 @@ def reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
         # Initialize the shaped reward
         shaped_reward = 0
 
-        # Get prices and time from states 
+        # Get prices, time and features from states 
         current_price = state[1]
         current_time = state[2]
         next_price = next_state[1]
+        available = state[7]
+        battery_level = state[0]
+
+        buy_price = 0 if len(buys) == 0 else buys.mean()
 
         # If action is buying)
         if action > 0:
+            # Compute the maximum amount of energy that can be bought
+            max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 4
-            # If the agent buys again but the price is lower than the previous price
-            if current_price < buy_price:
                 shaped_reward += 3
-            if current_price > sell_price:
-                shaped_reward -= 2
-            if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
+            # If the agent buys at a price less than 30
+            if current_price <= 30:
+                shaped_reward += 6
+            # If the agent buys at a price greater than 70
+            if current_price >= 70:
                 shaped_reward -= 5
-            buy_price = current_price
+            if battery_level == 50:
+                shaped_reward -= 10
+            # If the agent buys before 3 am or after 6 am
+            if current_time < 3 or current_time > 6:
+                shaped_reward -= 5
+            # If the agent buys again but the price is 5% higher than the previous price
+            if buy_price and current_price > buy_price * 1.05:
+                shaped_reward -= 1
+            # If the agent buys more than the maximum amount of energy that can be bought
+            if action > max_buy / 4.1:
+                shaped_reward -= 1
+            # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
+            if action <= max_buy / 8.2:
+                shaped_reward += 3
+            # Append the buy price (tensor)
+            buys = torch.cat((buys, torch.tensor([current_price])))
         # If action is selling
         elif action < 0:
-            if current_price >= 2 * buy_price:
-                shaped_reward += 4
-            if current_price > sell_price:
-                shaped_reward += 3
-            if current_price < buy_price:
-                shaped_reward -= 2
-            sell_price = current_price
-            if action < max(action, -min(25, state[0] * 0.9)) / 25:
+            # Compute the maximum amount of energy that can be sold
+            max_sell = max(action, -min(25, battery_level * 0.9)) / 25
+            # If the agent sells at a price equal to or greater than the buy price
+            if buy_price and current_price >= 2 * buy_price / 0.9:
+                shaped_reward += 16
+            # If the agent sells at a price greater than 66
+            if current_price >= 66 and buy_price:
+                shaped_reward += 10
+            # If the agent sells at a price less than twice the buy price
+            if buy_price and current_price < 2 * buy_price / 0.9:
+                shaped_reward -= 16
+            if not buy_price:
                 shaped_reward -= 5
-        else:
-            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 3
-            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
+            # If the agent sells more than the maximum amount of energy that can be sold
+            if action < max_sell:
                 shaped_reward -= 1
-        return shaped_reward, buy_price, sell_price
+            # Clear the buy history (tensor)
+            buys.new_empty(0)
+        else:
+            # If the agent is unavailable between 9 am and 7 pm
+            if 9 <= current_time <= 19 and not available:
+                shaped_reward += 5
+            # If the price is not a peak or a trough
+            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
+                shaped_reward += 0.1
+            # If the price is a peak or a trough
+            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
+                shaped_reward -= 0.2
+        return shaped_reward, buys
     
 def compute_returns(rewards: list, gamma=0.99) -> torch.Tensor:
     """ Computes the discounted returns for a list of rewards.
@@ -85,23 +119,23 @@ def objective(trial: optuna.Trial) -> float:
         float: The evaluation metric.
     """
     # Define the hyperparameters using the trial object
-    lr = trial.suggest_float('lr', 1e-3, 1e-2, log=True)
-    gamma = trial.suggest_float('gamma', 0.01, 0.7)
+    lr = trial.suggest_float('lr', 3e-4, 1e-2, log=True)
+    gamma = 0
     noise = trial.suggest_float('noise_std', 2, 15)
-    noise_decay = trial.suggest_float('noise_decay', 0.69, 0.95)
-    hidden_size = trial.suggest_categorical('hidden_size', [48, 64, 96, 128, 156])
+    noise_decay = trial.suggest_float('noise_decay', 0.7, 0.95)
+    hidden_size = trial.suggest_categorical('hidden_size', [32, 48, 64])
     clipping = trial.suggest_int('clipping', 1, 10)
     sequence_length = trial.suggest_int('sequence_length', 1, 30)
 
     # Create a new model with these hyperparameters
     policy_network = LSTM_PolicyNetwork(len(env.state), 1, hidden_size, 1).to("mps")
     # Train the model and return the evaluation metric
-    total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping)
+    total_reward = train_policy_gradient(env, val_env, policy_network, lr=lr, gamma=gamma, noise_std=noise, noise_decay=noise_decay, sequence_length=sequence_length, clipping=clipping, name=f"pg_{trial.number}.pth")
     return -total_reward
 
 
 def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNetwork, episodes = 20, lr = 0.0007, gamma = 0, 
-                          noise_std = 0.1, noise_decay = 0.9, sequence_length=7, clipping = 4, save = False):
+                          noise_std = 0.1, noise_decay = 0.9, sequence_length=7, clipping = 4, save = True, name = "pg.pth"):
     """ Trains a policy network using the policy gradient algorithm.
 
     Args:
@@ -118,7 +152,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
         save (bool, optional): Whether to save the model. Defaults to False.
     """
     # Initialize the optimizer
-    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.001)
+    optimizer = optim.Adam(policy_network.parameters(), lr=lr, weight_decay=0.0001)
     batch_size = 1  # Assuming we're dealing with single episodes
 
     device = torch.device("mps")
@@ -126,7 +160,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
     # Keep track of the validation rewards
     v_rewards = []
     counter = 0
-    buy_price, sell_price, last_price = 0, 0, 0
+    buys, last_price = torch.from_numpy(np.array([])), 0
 
     for episode in range(episodes):
         # Reset the environment
@@ -140,7 +174,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
             # Prepare the sequence of states
             if len(states) < sequence_length:
                 next_state, reward, done, _, _ = env.step(0)
-                next_state = torch.from_numpy(next_state[:8]).float().to(device)
+                next_state = torch.from_numpy(next_state).float().to(device)
             else:
                 state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)
                 # Policy network forward pass
@@ -155,9 +189,9 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 log_prob = normal_dist.log_prob(action).sum(axis=-1)
                 # Take a step in the environment
                 next_state, reward, done, _, _ = env.step(action.item())
-                next_state = torch.from_numpy(next_state[:8]).float().to(device)
+                next_state = torch.from_numpy(next_state).float().to(device)
                 # Store the reward and log probability
-                shaped_reward, buy_price, sell_price = reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
+                shaped_reward, buys = reward_shaping(buys, state, next_state, action, last_price)
                 rewards.append(shaped_reward + reward)
                 total_reward += reward
 
@@ -202,7 +236,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 else:  # If 'state' is already a tensor, just ensure it's the right type
                     state = state.float()
                 state = state.to(device)
-                states.append(state[:8])
+                states.append(state)
                 if len(states) < sequence_length:
                     next_state, reward, done, _, _ = val_env.step(0)
                 else:
@@ -226,7 +260,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 # Early stopping
                 if v_rewards[-1] < v_rewards[-2]:
                     counter += 1
-                    if counter == 7:
+                    if counter == 4:
                         return best_reward
                 else:
                     counter = 0
@@ -234,7 +268,7 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                 if total_reward > best_reward:
                     best_reward = total_reward
                     if save:
-                        torch.save(policy_network.state_dict(), "models/pg.pth")
+                        torch.save(policy_network.state_dict(), f"models/{name}")
 
     print("Training complete")
     return best_reward
@@ -246,7 +280,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         if sys.argv[1] == 'tune':
             study = optuna.create_study()  # Create a study object
-            study.optimize(objective, n_trials=50)  # Optimize the objective over 50 trials
+            study.optimize(objective, n_trials=20)  # Optimize the objective over 50 trials
 
             print("Best trial:")
             trial = study.best_trial
@@ -256,9 +290,11 @@ if __name__ == "__main__":
                 print(f"    {key}: {value}")
         elif sys.argv[1] == 'train':
             # Create a new model with the best hyperparameters
-            policy_network = LSTM_PolicyNetwork(8, 1, 48, 1).to("mps")
+            policy_network = LSTM_PolicyNetwork(10, 1, 48, 1).to("mps")
+            # Load the model
+            policy_network.load_state_dict(torch.load("models/pg_1.pth"))
             # Load the best model weights
-            train_policy_gradient(env, val_env, policy_network, episodes=50, lr=0.009, gamma=0.1, noise_std = 10, noise_decay=0.85, clipping=8, sequence_length=7, save=True)
+            train_policy_gradient(env, val_env, policy_network, episodes=100, lr=0.0025364074637955723, gamma=0, noise_std = 10.555213987532536, noise_decay=0.8789787544106076, clipping=4, sequence_length=3, save=True)
         else:
             print('Invalid command line argument. Please use one of the following: tune, train')
             exit()

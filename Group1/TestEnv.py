@@ -11,7 +11,7 @@ class Electric_Car(gym.Env):
         # Define the test data
         self.test_data = pd.read_excel(path_to_test_data)
   
-        # ADDED to code: feature set
+        # ADDED to code: loading feature set
         self.features = pd.read_excel(path_to_features)
 
         self.price_values = self.test_data.iloc[:, 1:25].to_numpy()
@@ -141,7 +141,7 @@ class Electric_Car(gym.Env):
             [battery_level / 25, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
         
-        # ADDED extra features: MAs 50, 100, 200, EMAs 3 & 7, Expanding Mean/Std/
+        # ADDED extra features: EMA 3 and 7
         self.state = np.concatenate((self.state, self.features.iloc[self.counter]))
 
         return self.state
