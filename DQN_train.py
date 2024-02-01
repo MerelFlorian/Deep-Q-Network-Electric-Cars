@@ -4,6 +4,7 @@ from algorithms import DQNAgentLSTM
 import torch
 import optuna
 import os, csv
+from copy import deepcopy
 
 
 def validate_agent(test_env, test_agent, states, sequence_length, model, batch_size):
@@ -82,7 +83,14 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
     Function to train the DQN agent.
     """
 
-    total_train_rewards, total_val_rewards = [], []
+    total_train_rewards = []
+    prev = -np.inf
+    highest_reward = -np.inf
+
+    # Define early stopping criteria
+    patience = 4
+    early_stopping_counter = 0
+
     
     for episode in range(episodes):
         state = env.reset()
@@ -126,28 +134,33 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                 
         total_train_rewards.append(sum(episode_rewards))
         validation_reward = sum(validate_agent(test_env, test_agent, states, sequence_length, model, batch_size))
-        total_val_rewards.append(validation_reward)
 
+        # Save the best model
+        if validation_reward > highest_reward:
+            highest_reward = validation_reward
+            best_episode = episode
+            best_model = deepcopy(agent.model)
+        
+        # Check and update the highest reward and best episode
+        if prev < validation_reward:
+            early_stopping_counter = 0  # Reset early stopping counter
+        else:
+            early_stopping_counter += 1
+            print(f"Early stopping counter: {early_stopping_counter}")
+
+        prev = validation_reward
+    
+        # Check for early stopping
+        if early_stopping_counter >= patience:
+            print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
+            agent.save(best_model, model_save_path)
+            break
+        
         print(f"Episode {episode + 1}: Train Reward: {sum(episode_rewards)}, Validation Reward: {validation_reward}")
-        counter = 0
 
-        # Early stopping
-        if episode > 0 and len(total_val_rewards) > 1:
-            if total_val_rewards[-1] < total_val_rewards[-2]:
-                counter += 1
-                if counter == 3:
-                        break
-                else:
-                    counter = 0
-    
-    # Calculate the rewards
-    avg_train_reward = sum(total_train_rewards) / episodes
-    avg_val_reward = sum(total_val_rewards) / episodes
-    print(f"Average Training Reward: {avg_train_reward}, Average Validation Reward: {avg_val_reward}")
-    
-    agent.save(model_save_path)
+    agent.save(best_model, model_save_path)
  
-    return avg_val_reward
+    return highest_reward
 
 if __name__ == "__main__":
 

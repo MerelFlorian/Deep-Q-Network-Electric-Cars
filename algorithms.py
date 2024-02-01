@@ -669,11 +669,11 @@ class DQNAgentLSTM:
         """
         self.model.load_state_dict(torch.load(name))
 
-    def save(self, name):
+    def save(self, best_model, name):
         """
         Function to save the model's weights.
         """
-        torch.save(self.model.state_dict(), name)
+        torch.save(best_model.state_dict(), name)
 
 class LSTM_DQN(nn.Module):
     """
