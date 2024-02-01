@@ -22,8 +22,7 @@ class QLearningAgent:
         self.min_epsilon = min_epsilon
         self.q_table = np.zeros(qtable_size)
         self.shape_weight = shape_weight
-        self.buy_price = 0
-        self.sell_price = 0
+        self.buys = np.array([])
 
     def discretize_state(self, state):
         """	
@@ -33,13 +32,14 @@ class QLearningAgent:
         battery_level = state[0] * 25
         hour = state[2]
         price = state[1]
+        available = state[7]
 
         # Discretize the state variables
         battery_idx = np.digitize(battery_level, self.state_bins[0]) - 1
         time_idx = np.digitize(hour, self.state_bins[1]) - 1
-        # availability_idx = int(available)
+        availability_idx = int(available)
         price_idx = np.digitize(price, self.state_bins[2]) - 1
-        return battery_idx, time_idx, price_idx
+        return battery_idx, time_idx, price_idx, availability_idx
 
     def discretize_action(self, action):
         """
@@ -67,8 +67,6 @@ class QLearningAgent:
         """
         Updates the Q-table using Q-learning.
         """
-        # Print reward and price, action
-        # print(f"Reward: {reward} | Price: {state[1]}, action: {action}, battery_level: {state[0]}, available: {state[7]}")
 
         # Skip update if state is invalid
         if not self.is_valid_state(state) or not self.is_valid_state(next_state):
@@ -134,61 +132,70 @@ class QLearningAgent:
         current_price = state[1]
         current_time = state[2]
         next_price = next_state[1]
-        ema_3 = state[8]
-        ema_7 = state[9]
+        available = state[7]
+        battery_level = state[0]
+
+        buy_price = 0 if len(self.buys) == 0 else np.mean(self.buys)
 
         # If action is buying)
         if action > 0:
             # Compute the maximum amount of energy that can be bought
-            max_buy = min(action, min(25,  (50 - state[0]) * 0.9)) / 25
-
+            max_buy = min(action, min(1,  (2 - battery_level) * 0.9))
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 10
-            # If the agent buys again but the price is higher than the previous price
-            if current_price > self.sell_price:
+                shaped_reward += 3
+            # If the agent buys at a price less than 30
+            if current_price <= 30:
+                shaped_reward += 6
+            # If the agent buys at a price greater than 70
+            if current_price >= 70:
                 shaped_reward -= 5
+            if battery_level == 2:
+                shaped_reward -= 10
+            # If the agent buys before 3 am or after 6 am
+            if current_time < 3 or current_time > 6:
+                shaped_reward -= 5
+            # If the agent buys again but the price is 5% higher than the previous price
+            if buy_price and current_price > buy_price * 1.05:
+                shaped_reward -= 1
             # If the agent buys more than the maximum amount of energy that can be bought
-            if action > max_buy:
-                shaped_reward -= 5
+            if action > max_buy / 4.1:
+                shaped_reward -= 1
             # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
-            if max_buy / 8.2 <= action <= max_buy / 2.05:
-                shaped_reward += 10
+            if action <= max_buy / 8.2:
+                shaped_reward += 3
             # Save the buy price
-            self.buy_price = current_price
-            # # If short EMA is less than long EMA, buying is encouraged
-            # if ema_3 < ema_7:
-            #     shaped_reward += 5
-            # # If short EMA is less than long EMA, buying is discouraged
-            # elif ema_3 > ema_7:
-            #     shaped_reward -= 5
+            self.buys = np.append(self.buys, current_price)
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
-            max_sell = max(action, -min(25, state[0] * 0.9)) / 25
-            # If the agent sells at twice a higher price than the buy price
-            if current_price >= 2 * self.buy_price:
-                shaped_reward += 20
-            # If the agent sells at a higher price than the buy price
-            if current_price < self.buy_price:
+            max_sell = max(action, -min(1, battery_level * 0.9))
+            # If the agent sells at a price equal to or greater than the buy price
+            if buy_price and current_price >= 2 * buy_price / 0.9:
+                shaped_reward += 16
+            # If the agent sells at a price greater than 66
+            if current_price >= 66 and buy_price:
+                shaped_reward += 10
+            # If the agent sells at a price less than twice the buy price
+            if buy_price and current_price < 2 * buy_price / 0.9:
+                shaped_reward -= 16
+            if not buy_price:
                 shaped_reward -= 5
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
-                shaped_reward -= 10 
-            # If short EMA is less than long EMA, selling is discouraged
-            if ema_3 < ema_7:
-                shaped_reward -= 5
-            # if Long EMA is less than short EMA, selling is encouraged
-            elif ema_3 > ema_7:
-                shaped_reward += 10
+                shaped_reward -= 1
             # Save the sell price
-            self.sell_price = current_price
-
+            self.buys = np.array([])
         else:
+            # If the agent is unavailable between 9 am and 7 pm
+            if 9 <= current_time <= 19 and not available:
+                shaped_reward += 5
+            # If the price is not a peak or a trough
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 1
+                shaped_reward += 0.1
+            # If the price is a peak or a trough
             if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 2
+                shaped_reward -= 0.2
         return shaped_reward
         
 class EMA:
@@ -327,13 +334,12 @@ class BuyLowSellHigh:
               self.action = -state[0]
           
       return self.action
-  
 
 class DQNAgentLSTM:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0, batch_size=24):
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         self.device = device
         self.state_size = state_size
@@ -341,17 +347,19 @@ class DQNAgentLSTM:
         self.memory = deque(maxlen=1000)
         self.gamma = gamma  # discount factor
         self.learning_rate = learning_rate
-        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
-        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0
+        self.epsilon_decay = 0.95
         self.batch_size = batch_size
 
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
+
+        self.buys = torch.from_numpy(np.array([], dtype=np.float32)).to(device)
 
 
     def remember(self, state, action, action_index, reward, next_state, done):
@@ -362,9 +370,11 @@ class DQNAgentLSTM:
 
     def choose_action(self, state_sequence, hidden_state=None):
         """Returns actions for given sequence of states as per current policy."""
-        
-        # Discretize the action space into 100 steps
-        action_values = np.linspace(-1, 1, self.action_size)
+        mid = 4
+        #  Discretize action bins
+        action_values = np.concatenate((
+            np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, .5, 6), np.array([.75, 1])
+        ))  # Discretize actions (buy/sell amounts)
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
@@ -427,6 +437,90 @@ class DQNAgentLSTM:
         # Update epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+    
+    def reward_shaping(self, state, next_state, action, last_price):
+        """Shape the reward such that buying low and selling high is encouraged. 
+
+        Args:
+            state (list): The current state of the environment.
+            next_state (list): The next state of the environment.
+            action (float): The action taken at the current time step.
+
+        Returns:
+            float: The shaped reward.
+        """
+        # Initialize the shaped reward
+        shaped_reward = 0
+
+        # Get prices, time and features from states 
+        current_price = state[1]
+        current_time = state[2]
+        next_price = next_state[1]
+        available = state[7]
+        battery_level = state[0]
+
+        buy_price = 0 if len(self.buys) == 0 else self.buys.mean()
+
+        # If action is buying)
+        if action > 0:
+            # Compute the maximum amount of energy that can be bought
+            max_buy = min(action, min(1,  (2 - battery_level) * 0.9))
+            # If the agent buys between 3 am and 6 am 
+            if 3 <= current_time <= 6:
+                shaped_reward += 3
+            # If the agent buys at a price less than 30
+            if current_price <= 30:
+                shaped_reward += 6
+            # If the agent buys at a price greater than 70
+            if current_price >= 70:
+                shaped_reward -= 5
+            if battery_level == 2:
+                shaped_reward -= 10
+            # If the agent buys before 3 am or after 6 am
+            if current_time < 3 or current_time > 6:
+                shaped_reward -= 5
+            # If the agent buys again but the price is 5% higher than the previous price
+            if buy_price and current_price > buy_price * 1.05:
+                shaped_reward -= 1
+            # If the agent buys more than the maximum amount of energy that can be bought
+            if action > max_buy / 4.1:
+                shaped_reward -= 1
+            # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
+            if action <= max_buy / 8.2:
+                shaped_reward += 3
+            # Append the buy price (tensor)
+            self.buys = torch.cat((self.buys, torch.tensor([current_price]).to(self.device)))
+        # If action is selling
+        elif action < 0:
+            # Compute the maximum amount of energy that can be sold
+            max_sell = max(action, -min(1, battery_level * 0.9))
+            # If the agent sells at a price equal to or greater than the buy price
+            if buy_price and current_price >= 2 * buy_price / 0.9:
+                shaped_reward += 16
+            # If the agent sells at a price greater than 66
+            if current_price >= 66 and buy_price:
+                shaped_reward += 10
+            # If the agent sells at a price less than twice the buy price
+            if buy_price and current_price < 2 * buy_price / 0.9:
+                shaped_reward -= 16
+            if not buy_price:
+                shaped_reward -= 5
+            # If the agent sells more than the maximum amount of energy that can be sold
+            if action < max_sell:
+                shaped_reward -= 1
+            # Clear the buy history (tensor)
+            self.buys.new_empty(0)
+        else:
+            # If the agent is unavailable between 9 am and 7 pm
+            if 9 <= current_time <= 19 and not available:
+                shaped_reward += 5
+            # If the price is not a peak or a trough
+            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
+                shaped_reward += 0.1
+            # If the price is a peak or a trough
+            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
+                shaped_reward -= 0.2
+        return shaped_reward
 
     def load(self, name):
         """
@@ -434,11 +528,11 @@ class DQNAgentLSTM:
         """
         self.model.load_state_dict(torch.load(name))
 
-    def save(self, name):
+    def save(self, best_model, name):
         """
         Function to save the model's weights.
         """
-        torch.save(self.model.state_dict(), name)
+        torch.save(best_model.state_dict(), name)
 
 class LSTM_DQN(nn.Module):
     """
@@ -475,6 +569,7 @@ class LSTM_DQN(nn.Module):
         
         return action_values, hidden_state
 
+
     def init_hidden(self, batch_size):
         """
         This function initializes the hidden state.
@@ -484,23 +579,17 @@ class LSTM_DQN(nn.Module):
         hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device),
                   weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device))
         return hidden
+    
+    
 
 class LSTM_PolicyNetwork(nn.Module):
-    """
-    This class represents the Policy Gradient LSTM network 
-    """
     def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
         super(LSTM_PolicyNetwork, self).__init__()
-        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-        self.device = device
         self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
         self.fc_mean = nn.Linear(hidden_size, action_size)
-        self.fc_log_std = nn.Linear(hidden_size, action_size)
-        
+        self.fc_log_std = nn.Linear(hidden_size, action_size)   
+
     def forward(self, state, hidden_state=None):
-        """
-        This function computes the forward pass 
-        """
         # state shape: (batch, sequence, features)
         if hidden_state is None:
             lstm_out, hidden_state = self.lstm(state)
@@ -513,10 +602,7 @@ class LSTM_PolicyNetwork(nn.Module):
 
 
     def init_hidden(self, device, batch_size):
-        """
-        This function initializes the hidden state
-        """
-        
+        # Initializes the hidden state
         # This depends on the number of LSTM layers and whether it's bidirectional
         weight = next(self.parameters()).data
         hidden = (weight.new(self.lstm.num_layers, batch_size, self.lstm.hidden_size).zero_().to(device),
