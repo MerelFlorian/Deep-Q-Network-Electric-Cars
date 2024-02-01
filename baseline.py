@@ -10,7 +10,7 @@ from utils import clip
 from data.data_vis import plot_revenue
 
 # Constants
-NUM_EPISODES = 1 # Define the number of episodes for training
+NUM_EPISODES = 100 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
@@ -166,7 +166,7 @@ if test_agent == "all":
 
     # Validate PG Agent
     pg_agent = LSTM_PolicyNetwork(10, 1, 48, 1)
-    pg_agent.model = np.load('models/PG.pth')
+    pg_agent.model = np.load('models/pg_1.pth')
     pg_performance, pg_log_env = validate_agent(env, pg_agent)
     print(f"Average reward on validation set for pg: {pg_performance}")
 
