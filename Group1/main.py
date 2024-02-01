@@ -22,12 +22,12 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     total_rewards = np.array([])
     
     if isinstance(agent, DQNAgentLSTM):
-        sequence_length = 7
+        sequence_length = 4
         device = torch.device("cpu")
         state_dict = torch.load('models/DQN/best.pth', map_location=device)
-        agent.model = LSTM_DQN(10, 12, hidden_size=64, lstm_layers=1).to(device)
+        agent.model = LSTM_DQN(10, 10, hidden_size=64, lstm_layers=1).to(device)
         agent.model.load_state_dict(state_dict)
-        hidden_state = agent.model.init_hidden(1)
+        hidden_state = agent.model.init_hidden(32)
     
     if isinstance(agent, LSTM_PolicyNetwork):
         sequence_length = 7
@@ -169,7 +169,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA o
         return ema(), "EMA"
     elif sys.argv[1] =="DQN":
         state_size = 10
-        action_size = 12
+        action_size = 10
         test_agent = DQNAgentLSTM(state_size, action_size)
         return test_agent, "DQN"
     elif sys.argv[1] == "PG":
