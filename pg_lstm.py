@@ -246,10 +246,10 @@ def train_policy_gradient(env: Env, val_env: Env, policy_network: LSTM_PolicyNet
                     action = normal_dist.sample()
                     next_state, reward, done, _, _ = val_env.step(action.item())
                     total_reward += reward
+                
                 state = next_state
                 if len(states) < sequence_length:
                     continue
-
 
             print(f"Validation reward: {total_reward}")
             # Keep track of the validation rewards for early stopping
