@@ -11,7 +11,8 @@ from data.data_vis import plot_revenue
 import torch
 
 # Constants
-NUM_EPISODES = 100 # Define the number of episodes for training
+NUM_EPISODES = 1
+ # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
@@ -101,7 +102,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
                         continue
             # Update the total reward
             total_reward += reward
-            # log_env['revenue'].append(total_reward)
+            log_env['revenue'].append(total_reward)
         total_rewards = np.append(total_rewards, total_reward)
     # Compute and return the average reward
     return np.mean(total_rewards), log_env

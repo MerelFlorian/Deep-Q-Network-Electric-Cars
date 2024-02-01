@@ -289,6 +289,10 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema, log_env_dqn, log_env_pg)
     """
     Plot the cumulative rewards for each agent
     """
+    # Fix length of PG model (LSTM specific problem)
+    zeros = [0]*6
+    log_env_pg['revenue'] = zeros + log_env_pg['revenue']
+    
     # Convert dates to days since the start for plotting
     days_ql = [(date - log_env_ql['date'][0]).days for date in log_env_ql['date']]
     days_blsh = [(date - log_env_blsh['date'][0]).days for date in log_env_blsh['date']]
@@ -298,6 +302,7 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema, log_env_dqn, log_env_pg)
 
     # Plot cumulative rewards for each agent
     plt.figure(figsize=(12, 6))
+
 
     plt.plot(days_ql, log_env_ql['revenue'], label='QLearningAgent')
     plt.plot(days_blsh, log_env_blsh['revenue'], label='BuyLowSellHigh')
