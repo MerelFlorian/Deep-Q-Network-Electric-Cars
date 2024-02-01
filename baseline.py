@@ -1,6 +1,6 @@
 import numpy as np
 from ElectricCarEnv import Electric_Car
-from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgentLSTM, LSTM_PolicyNetwork
+from algorithms import QLearningAgent, BuyLowSellHigh, EMA, DQNAgentLSTM, LSTM_PolicyNetwork, LSTM_DQN
 from gym import Env
 from typing import Type, Tuple
 import sys
@@ -22,13 +22,17 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     """
     # Initialize the total reward
     total_rewards = np.array([])
+    states = []
 
     if isinstance(agent, DQNAgentLSTM):
-        states = []
         sequence_length = 7
+        device = torch.device("cpu")
+
+        state_dict = torch.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
+        agent.model = LSTM_DQN(9, 12, hidden_size=64, lstm_layers=2).to(device)
+        hidden_state = agent.model.init_hidden(1)
     
     if isinstance(agent, LSTM_PolicyNetwork):
-        states = []
         sequence_length = 7
         device = torch.device("cpu")
         state_dict = torch.load('models/pg_1.pth', map_location=device)
@@ -47,19 +51,19 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         while not done:
             # Choose an action
             if isinstance(agent, DQNAgentLSTM):
-                if len(states) < sequence_length:
-                    next_state, reward, done, _, _ = env.step(0)
+                if isinstance(state, np.ndarray):
+                    state = torch.from_numpy(state).float()
                 else:
-                    state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-                    action_index, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
-                    next_state, reward, done, _, _ = env.step(action)
+                    state = state.float()
 
-                state = torch.from_numpy(next_state).float()
                 states.append(state)
 
                 if len(states) < sequence_length:
-                    continue
-
+                    action = 0
+                else:
+                    state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+                    _, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
+                
             elif isinstance(agent, QLearningAgent):
                 action = agent.choose_action(state)
 
@@ -92,7 +96,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
             # Take a step
             state, reward, done, _, _ = env.step(action)
 
-            if isinstance(agent, LSTM_PolicyNetwork):
+            if isinstance(agent, LSTM_PolicyNetwork or DQNAgentLSTM):
                 if len(states) < sequence_length:
                         continue
             # Update the total reward
@@ -174,10 +178,9 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA o
     elif sys.argv[1] == 'ema':
         return ema(), "EMA"
     elif sys.argv[1] =="DQN":
-        state_size = 34 
-        action_size = 200
+        state_size = 9
+        action_size = 12
         test_agent = DQNAgentLSTM(state_size, action_size)
-        test_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
         return test_agent, "DQN"
     elif sys.argv[1] == "PG":
         test_agent = LSTM_PolicyNetwork(10, 1, 48, 1)
