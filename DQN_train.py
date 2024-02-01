@@ -46,11 +46,11 @@ def objective(trial):
     # Define the hyperparameter search space using the trial object
     lr = trial.suggest_float("lr", 3e-4, 1e-2, log=True)
     batch_size = trial.suggest_categorical("batch_size", [1, 2, 4, 8, 16, 32, 64, 128])
-    sequence_length = trial.suggest_int("sequence_length", 1, 30)
+    sequence_length = trial.suggest_int("sequence_length", 1, 10)
 
     gamma = 0
     action_size = 12
-    episodes = 2
+    episodes = 8
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
@@ -88,7 +88,7 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
     highest_reward = -np.inf
 
     # Define early stopping criteria
-    patience = 4
+    patience = 3
     early_stopping_counter = 0
 
     
@@ -97,7 +97,7 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
         done = False
         states, episode_rewards = [], []
         hidden_state = model.init_hidden(batch_size)
-        last_price, buy_price, sell_price = 0, 0, 0
+        last_price = 0
         
         # Ensure the state has the correct shape
         if not isinstance(state, np.ndarray) or state.shape != (len(env.state),):

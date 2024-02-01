@@ -140,7 +140,7 @@ class QLearningAgent:
         # If action is buying)
         if action > 0:
             # Compute the maximum amount of energy that can be bought
-            max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
+            max_buy = min(action, min(1,  (2 - battery_level) * 0.9))
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
                 shaped_reward += 3
@@ -150,7 +150,7 @@ class QLearningAgent:
             # If the agent buys at a price greater than 70
             if current_price >= 70:
                 shaped_reward -= 5
-            if battery_level == 50:
+            if battery_level == 2:
                 shaped_reward -= 10
             # If the agent buys before 3 am or after 6 am
             if current_time < 3 or current_time > 6:
@@ -169,7 +169,7 @@ class QLearningAgent:
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
-            max_sell = max(action, -min(25, battery_level * 0.9)) / 25
+            max_sell = max(action, -min(1, battery_level * 0.9))
             # If the agent sells at a price equal to or greater than the buy price
             if buy_price and current_price >= 2 * buy_price / 0.9:
                 shaped_reward += 16
@@ -480,7 +480,7 @@ class DQNAgentLSTM:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0, batch_size=24):
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         self.device = device
         self.state_size = state_size
@@ -488,19 +488,19 @@ class DQNAgentLSTM:
         self.memory = deque(maxlen=1000)
         self.gamma = gamma  # discount factor
         self.learning_rate = learning_rate
-        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
-        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0
+        self.epsilon_decay = 0.95
         self.batch_size = batch_size
 
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
 
-        self.buys = np.array([])
+        self.buys = torch.from_numpy(np.array([], dtype=np.float32)).to(device)
 
 
     def remember(self, state, action, action_index, reward, next_state, done):
@@ -600,12 +600,12 @@ class DQNAgentLSTM:
         available = state[7]
         battery_level = state[0]
 
-        buy_price = 0 if len(self.buys) == 0 else np.mean(self.buys)
+        buy_price = 0 if len(self.buys) == 0 else self.buys.mean()
 
         # If action is buying)
         if action > 0:
             # Compute the maximum amount of energy that can be bought
-            max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
+            max_buy = min(action, min(1,  (2 - battery_level) * 0.9))
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
                 shaped_reward += 3
@@ -615,7 +615,7 @@ class DQNAgentLSTM:
             # If the agent buys at a price greater than 70
             if current_price >= 70:
                 shaped_reward -= 5
-            if battery_level == 50:
+            if battery_level == 2:
                 shaped_reward -= 10
             # If the agent buys before 3 am or after 6 am
             if current_time < 3 or current_time > 6:
@@ -629,12 +629,12 @@ class DQNAgentLSTM:
             # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
             if action <= max_buy / 8.2:
                 shaped_reward += 3
-            # Save the buy price
-            self.buys = np.append(self.buys, current_price)
+            # Append the buy price (tensor)
+            self.buys = torch.cat((self.buys, torch.tensor([current_price]).to(self.device)))
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
-            max_sell = max(action, -min(25, battery_level * 0.9)) / 25
+            max_sell = max(action, -min(1, battery_level * 0.9))
             # If the agent sells at a price equal to or greater than the buy price
             if buy_price and current_price >= 2 * buy_price / 0.9:
                 shaped_reward += 16
@@ -649,8 +649,8 @@ class DQNAgentLSTM:
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
                 shaped_reward -= 1
-            # Save the sell price
-            self.buys = np.array([])
+            # Clear the buy history (tensor)
+            self.buys.new_empty(0)
         else:
             # If the agent is unavailable between 9 am and 7 pm
             if 9 <= current_time <= 19 and not available:
