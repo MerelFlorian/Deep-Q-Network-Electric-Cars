@@ -291,10 +291,8 @@ if __name__ == "__main__":
         elif sys.argv[1] == 'train':
             # Create a new model with the best hyperparameters
             policy_network = LSTM_PolicyNetwork(10, 1, 48, 1).to("mps")
-            # Load the model
-            policy_network.load_state_dict(torch.load("models/pg_1.pth"))
             # Load the best model weights
-            train_policy_gradient(env, val_env, policy_network, episodes=100, lr=0.0025364074637955723, gamma=0, noise_std = 10.555213987532536, noise_decay=0.8789787544106076, clipping=4, sequence_length=3, save=True)
+            train_policy_gradient(env, val_env, policy_network, episodes=80, lr=0.0025364074637955723, gamma=0, noise_std = 10.555213987532536, noise_decay=0.8789787544106076, clipping=4, sequence_length=3, save=True)
         else:
             print('Invalid command line argument. Please use one of the following: tune, train')
             exit()
