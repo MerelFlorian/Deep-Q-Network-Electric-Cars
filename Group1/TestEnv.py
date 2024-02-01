@@ -2,7 +2,6 @@ import gym
 import numpy as np
 import pandas as pd
 
-
 class Electric_Car(gym.Env):
 
     def __init__(self, path_to_test_data=str, path_to_features=str):
@@ -140,7 +139,7 @@ class Electric_Car(gym.Env):
         self.state = np.array(
             [battery_level / 25, price, int(hour), int(day_of_week), int(day_of_year), int(month), int(year),
              int(self.car_is_available)])
-        
+
         # ADDED extra features: EMA 3 and 7
         self.state = np.concatenate((self.state, self.features.iloc[self.counter]))
 
