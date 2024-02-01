@@ -27,9 +27,8 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     if isinstance(agent, DQNAgentLSTM):
         sequence_length = 7
         device = torch.device("cpu")
-
-        state_dict = torch.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
-        agent.model = LSTM_DQN(9, 12, hidden_size=64, lstm_layers=2).to(device)
+        state_dict = torch.load('models/DQN_version_4/best.pth', map_location=device)
+        agent.model = LSTM_DQN(22, 10, hidden_size=64, lstm_layers=1).to(device)
         hidden_state = agent.model.init_hidden(1)
     
     if isinstance(agent, LSTM_PolicyNetwork):
