@@ -240,9 +240,9 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
         color = 'green' if df['availability'].iloc[i] else 'black'
         ax1.plot([df['date'].iloc[i-1], df['date'].iloc[i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=5)
 
-    ax1.set_xlabel('Time (Hours)')
-    ax1.set_ylabel('Price (Euros/MWh)', color='black')
-    ax1.tick_params('y', colors='black')
+    ax1.set_xlabel('Time (Hours)', fontsize=15)
+    ax1.set_ylabel('Price (Euros/MWh)', color='black', fontsize=15)
+    ax1.tick_params('y', colors='black', labelsize=15)
 
     # Formatting the x-axis to display time in hours
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
@@ -251,8 +251,8 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     # Adding battery level with secondary axis
     ax2 = ax1.twinx()
     ax2.plot(df['date'], df['battery'], label='Battery Level', color='purple')
-    ax2.set_ylabel('Battery Level (kWh)', color='purple')
-    ax2.tick_params('y', colors='purple')
+    ax2.set_ylabel('Battery Level (kWh)', color='purple', fontsize=15)
+    ax2.tick_params('y', colors='purple', labelsize=15)
 
     # Create custom legend elements for actions
     legend_elements_actions = [
@@ -280,8 +280,8 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
 
     # Add title
     # Main title
-    plt.title(f'Price and Battery Level Over Time for {algorithm}', color='black')
-    plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=10, style='italic')
+    plt.title(f'Price and Battery Level Over Time for {algorithm}', color='black', fontsize=20)
+    plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=15, style='italic')
 
     plt.tight_layout()
     plt.savefig(f'images/price_battery_level_{algorithm}{i}_new.png')

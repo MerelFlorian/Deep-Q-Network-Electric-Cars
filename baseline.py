@@ -10,7 +10,7 @@ from utils import clip
 from data.data_vis import plot_revenue
 
 # Constants
-NUM_EPISODES = 100 # Define the number of episodes for training
+NUM_EPISODES = 1 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
@@ -82,7 +82,7 @@ def qlearning() -> QLearningAgent:
     # Create a new agent instance
     test_agent = QLearningAgent(state_bins, action_bins, qtable_size, epsilon=0) 
     # Load the Q-table
-    test_agent.q_table = np.load('models/Qlearning/room.npy')
+    test_agent.q_table = np.load('models/Qlearning/best.npy')
 
     # Return the agent
     return test_agent
