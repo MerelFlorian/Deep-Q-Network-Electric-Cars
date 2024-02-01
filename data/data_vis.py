@@ -289,10 +289,6 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema, log_env_dqn, log_env_pg)
     """
     Plot the cumulative rewards for each agent
     """
-    # Fix length of PG model (LSTM specific problem)
-    zeros = [0]*6
-    log_env_pg['revenue'] = zeros + log_env_pg['revenue']
-    
     # Convert dates to days since the start for plotting
     days_ql = [(date - log_env_ql['date'][0]).days for date in log_env_ql['date']]
     days_blsh = [(date - log_env_blsh['date'][0]).days for date in log_env_blsh['date']]
@@ -315,7 +311,7 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema, log_env_dqn, log_env_pg)
     plt.title('Cumulative Rewards over Days for Baseline Algorithms')
     plt.legend()
     plt.grid(True)
-    plt.savefig('images/cumulative_reward{}.png')
+    plt.savefig('images/cumulative_reward.png')
 
 def hourly_patterns(df: pd.DataFrame)-> None:
     """Plot hourly patterns for each year

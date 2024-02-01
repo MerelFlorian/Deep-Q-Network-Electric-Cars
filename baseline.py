@@ -98,9 +98,10 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
 
             if isinstance(agent, LSTM_PolicyNetwork or DQNAgentLSTM):
                 if len(states) < sequence_length:
-                        continue
+                    log_env['revenue'].append(0)
+                    continue
             # Update the total reward
-            total_reward += reward
+            total_reward += reward.item() if isinstance(reward, torch.Tensor) else reward
             log_env['revenue'].append(total_reward)
         total_rewards = np.append(total_rewards, total_reward)
     # Compute and return the average reward
@@ -220,7 +221,6 @@ if test_agent == "all":
     pg_agent = LSTM_PolicyNetwork(10, 1, 48, 1)
     pg_performance, pg_log_env = validate_agent(env, pg_agent)
     print(f"Average reward on validation set for pg: {pg_performance}")
-
     plot_revenue(ql_log_env, blsh_log_env, ema_log_env, dqn_log_env, pg_log_env)
 
 else:
