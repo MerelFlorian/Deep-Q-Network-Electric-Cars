@@ -50,7 +50,7 @@ def objective(trial):
 
     gamma = 0
     action_size = 12
-    episodes = 20
+    episodes = 2
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
