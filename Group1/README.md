@@ -34,6 +34,23 @@ To run PG:
 ```sh
 python3 main.py PG data/validate.xlsx
 ```
+## Training
+These command are for retraining the models:
+
+For Q-learning:
+```sh
+python3 qlearning_train.py
+```
+
+For DQN:
+```sh
+python3 DQN_train.py
+```
+
+For PG
+```sh
+python3 pg_lstm.py
+```
 
 
 
