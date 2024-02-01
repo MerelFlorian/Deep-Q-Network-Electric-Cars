@@ -287,7 +287,7 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     plt.tight_layout()
     plt.savefig(f'images/price_battery_level_{algorithm}{i}_new.png')
 
-def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
+def plot_revenue(log_env_ql, log_env_blsh, log_env_ema, log_env_dqn, log_env_pg) -> None:
     """
     Plot the cumulative rewards for each agent
     """
@@ -295,6 +295,8 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     days_ql = [(date - log_env_ql['date'][0]).days for date in log_env_ql['date']]
     days_blsh = [(date - log_env_blsh['date'][0]).days for date in log_env_blsh['date']]
     days_ema = [(date - log_env_ema['date'][0]).days for date in log_env_ema['date']]
+    days_dqn = [(date - log_env_dqn['date'][0]).days for date in log_env_dqn['date']]
+    days_pg = [(date - log_env_pg['date'][0]).days for date in log_env_pg['date']]
 
     # Plot cumulative rewards for each agent
     plt.figure(figsize=(12, 6))
@@ -302,6 +304,8 @@ def plot_revenue(log_env_ql, log_env_blsh, log_env_ema) -> None:
     plt.plot(days_ql, log_env_ql['revenue'], label='QLearningAgent')
     plt.plot(days_blsh, log_env_blsh['revenue'], label='BuyLowSellHigh')
     plt.plot(days_ema, log_env_ema['revenue'], label='EMA')
+    plt.plot(days_dqn, log_env_dqn['revenue'], label='DQN')
+    plt.plot(days_pg, log_env_pg['revenue'], label='PG')
 
     plt.xlabel('Days')
     plt.ylabel('Cumulative Reward')
