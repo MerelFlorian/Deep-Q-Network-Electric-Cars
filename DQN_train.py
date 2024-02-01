@@ -4,56 +4,8 @@ from algorithms import DQNAgentLSTM
 import torch
 import optuna
 import os, csv
+from copy import deepcopy
 
-def reward_shaping(state, next_state, action, last_price, buy_price, sell_price):
-        """Shape the reward such that buying low and selling high is encouraged. 
-
-        Args:
-            state (list): The current state of the environment.
-            next_state (list): The next state of the environment.
-            action (float): The action taken at the current time step.
-
-        Returns:
-            float: The shaped reward.
-        """
-        # Initialize the shaped reward
-        shaped_reward = 0
-
-        # Get prices and time from states 
-        current_price = state[1]
-        current_time = state[2]
-        next_price = next_state[1]
-
-        # If action is buying)
-        if action > 0:
-            # If the agent buys between 3 am and 6 am 
-            if 3 <= current_time <= 6:
-                shaped_reward += 4
-            # If the agent buys again but the price is lower than the previous price
-            if current_price < buy_price:
-                shaped_reward += 3
-            if current_price > sell_price:
-                shaped_reward -= 2
-            if action > min(action, min(25,  (50 - state[0]) * 0.9)) / 25:
-                shaped_reward -= 5
-            buy_price = current_price
-        # If action is selling
-        elif action < 0:
-            if current_price >= 2 * buy_price:
-                shaped_reward += 4
-            if current_price > sell_price:
-                shaped_reward += 3
-            if current_price < buy_price:
-                shaped_reward -= 2
-            sell_price = current_price
-            if action < max(action, -min(25, state[0] * 0.9)) / 25:
-                shaped_reward -= 5
-        else:
-            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 3
-            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 1
-        return shaped_reward, buy_price, sell_price
 
 def validate_agent(test_env, test_agent, states, sequence_length, model, batch_size):
     """
@@ -96,8 +48,8 @@ def objective(trial):
     batch_size = trial.suggest_categorical("batch_size", [1, 2, 4, 8, 16, 32, 64, 128])
     sequence_length = trial.suggest_int("sequence_length", 1, 30)
 
-    gamma = 0.01
-    action_size = 24
+    gamma = 0
+    action_size = 12
     episodes = 20
 
     # Create the environment and agent
@@ -131,7 +83,14 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
     Function to train the DQN agent.
     """
 
-    total_train_rewards, total_val_rewards = [], []
+    total_train_rewards = []
+    prev = -np.inf
+    highest_reward = -np.inf
+
+    # Define early stopping criteria
+    patience = 4
+    early_stopping_counter = 0
+
     
     for episode in range(episodes):
         state = env.reset()
@@ -156,12 +115,13 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                 next_state, reward, done, _, _ = env.step(action)
                 next_state = torch.from_numpy(next_state).float().to(agent.device)
                 episode_rewards.append(reward)
-                shaped_reward, buy_price, sell_price = reward_shaping(state, next_state, action, last_price, buy_price, sell_price)
+                shaped_reward = agent.reward_shaping(state, next_state, action, last_price)
                 agent.remember(state, action, action_index, shaped_reward + reward, next_state, done)
 
                 # Experience replay
                 if len(agent.memory) > agent.batch_size:
                     agent.replay()
+
             last_price = state[1]
             state = next_state 
             states.append(state)
@@ -174,28 +134,33 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
                 
         total_train_rewards.append(sum(episode_rewards))
         validation_reward = sum(validate_agent(test_env, test_agent, states, sequence_length, model, batch_size))
-        total_val_rewards.append(validation_reward)
 
+        # Save the best model
+        if validation_reward > highest_reward:
+            highest_reward = validation_reward
+            best_episode = episode
+            best_model = deepcopy(agent.model)
+        
+        # Check and update the highest reward and best episode
+        if prev < validation_reward:
+            early_stopping_counter = 0  # Reset early stopping counter
+        else:
+            early_stopping_counter += 1
+            print(f"Early stopping counter: {early_stopping_counter}")
+
+        prev = validation_reward
+    
+        # Check for early stopping
+        if early_stopping_counter >= patience:
+            print(f"Early stopping at episode {episode} due to lack of improvement in validation reward.")
+            agent.save(best_model, model_save_path)
+            break
+        
         print(f"Episode {episode + 1}: Train Reward: {sum(episode_rewards)}, Validation Reward: {validation_reward}")
-        counter = 0
 
-        # Early stopping
-        if episode > 0 and len(total_val_rewards) > 1:
-            if total_val_rewards[-1] < total_val_rewards[-2]:
-                counter += 1
-                if counter == 3:
-                        break
-                else:
-                    counter = 0
-    
-    # Calculate the rewards
-    avg_train_reward = sum(total_train_rewards) / episodes
-    avg_val_reward = sum(total_val_rewards) / episodes
-    print(f"Average Training Reward: {avg_train_reward}, Average Validation Reward: {avg_val_reward}")
-    
-    agent.save(model_save_path)
+    agent.save(best_model, model_save_path)
  
-    return avg_val_reward
+    return highest_reward
 
 if __name__ == "__main__":
 
