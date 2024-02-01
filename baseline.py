@@ -24,7 +24,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     total_rewards = np.array([])
     
     if isinstance(agent, DQNAgentLSTM):
-        sequence_length = 7
+        sequence_length = 10
         device = torch.device("cpu")
         state_dict = torch.load('data/best_models/DQN/best.pth', map_location=device)
         agent.model = LSTM_DQN(10, 12, hidden_size=64, lstm_layers=1).to(device)
@@ -168,7 +168,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA o
     Returns:
         Tuple[QLearningAgent | BuyLowSellHigh | EMA, str]: The agent and the algorithm name.
     """
-    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "PG","all"]:
+    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "PG", "all"]:
         print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema, DQN, PG')
         exit()
     if sys.argv[1] == 'qlearning':

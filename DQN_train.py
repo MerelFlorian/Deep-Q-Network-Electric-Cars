@@ -49,8 +49,8 @@ def objective(trial):
     sequence_length = trial.suggest_int("sequence_length", 1, 10)
 
     gamma = 0
-    action_size = 12
-    episodes = 8
+    action_size = 10
+    episodes = 3
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
@@ -67,9 +67,9 @@ def objective(trial):
     if not os.path.exists('hyperparameter_tuning_results_DQN_version5.csv'):
         with open('hyperparameter_tuning_results_DQN_version5.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Action Size', 'Validation Reward'])
+            writer.writerow(['Trial', 'Learning Rate', 'Gamma', 'Action Size', 'Sequence L', 'Batch', 'Validation Reward'])
 
-    fields = [trial.number, lr, gamma, action_size, validation_reward]
+    fields = [trial.number, lr, gamma, action_size, sequence_length, batch_size, validation_reward]
     with open('hyperparameter_tuning_results_DQN_version5.csv', 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
