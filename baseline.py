@@ -8,9 +8,10 @@ from collections import defaultdict
 from data.data_vis import visualize_bat
 from utils import clip
 from data.data_vis import plot_revenue
+import torch
 
 # Constants
-NUM_EPISODES = 1 # Define the number of episodes for training
+NUM_EPISODES = 5 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
@@ -21,6 +22,20 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     """
     # Initialize the total reward
     total_rewards = np.array([])
+
+    if isinstance(agent, DQNAgentLSTM):
+        states = []
+        sequence_length = 7
+    
+    if isinstance(agent, LSTM_PolicyNetwork):
+        states = []
+        sequence_length = 7
+        device = torch.device("cpu")
+        state_dict = torch.load('models/pg_1.pth', map_location=device)
+        policy_network = LSTM_PolicyNetwork(10, 1, 48, 1)
+        policy_network.load_state_dict(state_dict)
+        hidden_state = policy_network.init_hidden(device, 1)
+
     # Loop through the episodes
     for episode in range(NUM_EPISODES):
         total_reward = 0
@@ -32,9 +47,36 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
         while not done:
             # Choose an action
             if isinstance(agent, DQNAgentLSTM):
-                _, action, _ = agent.choose_action(state)
+                if len(states) < sequence_length:
+                    next_state, reward, done, _, _ = env.step(0)
+                else:
+                    state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
+                    action_index, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
+                    next_state, reward, done, _, _ = env.step(action)
+
+                state = torch.from_numpy(next_state).float()
+                states.append(state)
+
+                if len(states) < sequence_length:
+                    continue
+
             elif isinstance(agent, QLearningAgent):
                 action = agent.choose_action(state)
+
+            elif isinstance(agent, LSTM_PolicyNetwork):
+                if isinstance(state, np.ndarray):
+                    state = torch.from_numpy(state).float()
+                else:
+                    state = state.float()
+                states.append(state)
+                if len(states) < sequence_length:
+                    action = 0       
+                else:
+                    state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)
+                    action_mean, action_std, hidden_state = policy_network(state_sequence, hidden_state)
+                    normal_dist = torch.distributions.Normal(action_mean, action_std)
+                    action = normal_dist.sample()
+                
             else:
                 action = clip(agent.choose_action(state), state)
             
@@ -46,8 +88,13 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
                 log_env['price'].append(state[1])
                 log_env['date'].append(env.timestamps[env.day - 1])
                 log_env['hour'].append(env.hour)                
+            
             # Take a step
             state, reward, done, _, _ = env.step(action)
+
+            if isinstance(agent, LSTM_PolicyNetwork):
+                if len(states) < sequence_length:
+                        continue
             # Update the total reward
             total_reward += reward
             # log_env['revenue'].append(total_reward)
@@ -108,7 +155,7 @@ def ema() -> EMA:
     # Create and return a new agent instance
     return EMA(3, 7, 50)
 
-def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, str]:
+def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM or LSTM_PolicyNetwork, str]:
     """ Function to process the command line arguments.
 
     Args:
@@ -117,8 +164,8 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
     Returns:
         Tuple[QLearningAgent | BuyLowSellHigh | EMA, str]: The agent and the algorithm name.
     """
-    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "all"]:
-        print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema')
+    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "PG","all"]:
+        print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema, DQN, PG')
         exit()
     if sys.argv[1] == 'qlearning':
         return qlearning(), 'Q-learning'
@@ -132,6 +179,9 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA, 
         test_agent = DQNAgentLSTM(state_size, action_size)
         test_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
         return test_agent, "DQN"
+    elif sys.argv[1] == "PG":
+        test_agent = LSTM_PolicyNetwork(10, 1, 48, 1)
+        return test_agent, "PG"
     else: 
         return "all", "All"
         
