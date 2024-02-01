@@ -54,11 +54,11 @@ def objective(trial):
 
     # Create the environment and agent
     env = Electric_Car("data/train.xlsx", "data/f_train.xlsx")
-    agent = DQNAgentLSTM(len(env.state), action_size, learning_rate=lr, gamma=gamma)
+    agent = DQNAgentLSTM(len(env.state), action_size, learning_rate=lr, gamma=gamma, batch_size=batch_size)
 
     # Create the validation environment
     test_env = Electric_Car("data/validate.xlsx", "data/f_val.xlsx")
-    test_agent = DQNAgentLSTM(len(test_env.state), action_size, learning_rate=lr, gamma=gamma)
+    test_agent = DQNAgentLSTM(len(test_env.state), action_size, learning_rate=lr, gamma=gamma, batch_size=batch_size)
 
     # Train the agent and get validation reward
     validation_reward = train_DQN_LSTM(env, agent, agent.model, test_env, test_agent, episodes, sequence_length, model_save_path=f"models/DQN_version_4/lr:{lr}_gamma:{gamma}_actsize:{action_size}.pth", batch_size=batch_size)
@@ -128,9 +128,6 @@ def train_DQN_LSTM(env, agent, model, test_env, test_agent, episodes, sequence_l
             
             if len(states) < sequence_length:
                 continue
-
-            if done:
-                break
                 
         total_train_rewards.append(sum(episode_rewards))
         validation_reward = sum(validate_agent(test_env, test_agent, states, sequence_length, model, batch_size))
