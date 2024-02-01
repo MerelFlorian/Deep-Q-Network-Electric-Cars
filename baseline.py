@@ -11,7 +11,7 @@ from data.data_vis import plot_revenue
 import torch
 
 # Constants
-NUM_EPISODES = 1 # Define the number of episodes for training
+NUM_EPISODES = 100 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
@@ -24,7 +24,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     total_rewards = np.array([])
     
     if isinstance(agent, DQNAgentLSTM):
-        sequence_length = 7
+        sequence_length = 10
         device = torch.device("cpu")
         state_dict = torch.load('data/best_models/DQN/best.pth', map_location=device)
         agent.model = LSTM_DQN(10, 12, hidden_size=64, lstm_layers=1).to(device)
@@ -34,7 +34,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     if isinstance(agent, LSTM_PolicyNetwork):
         sequence_length = 7
         device = torch.device("cpu")
-        state_dict = torch.load('best_models/PG/pg_1.pth', map_location=device)
+        state_dict = torch.load('data/best_models/PG/pg_1.pth', map_location=device)
         policy_network = LSTM_PolicyNetwork(10, 1, 48, 1)
         policy_network.load_state_dict(state_dict)
         hidden_state = policy_network.init_hidden(device, 1)
@@ -133,7 +133,7 @@ def qlearning() -> QLearningAgent:
     # Create a new agent instance
     test_agent = QLearningAgent(state_bins, action_bins, qtable_size, epsilon=0) 
     # Load the Q-table
-    test_agent.q_table = np.load('best_models/qlearning/best.npy')
+    test_agent.q_table = np.load('data/best_models/qlearning/best.npy')
 
     # Return the agent
     return test_agent
@@ -168,7 +168,7 @@ def process_command(env: Env) -> Tuple[QLearningAgent or BuyLowSellHigh or EMA o
     Returns:
         Tuple[QLearningAgent | BuyLowSellHigh | EMA, str]: The agent and the algorithm name.
     """
-    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "PG","all"]:
+    if sys.argv[1] not in ['qlearning', 'blsh', 'ema', "DQN", "PG", "all"]:
         print('Invalid command line argument. Please use one of the following: qlearning, blsh, ema, DQN, PG')
         exit()
     if sys.argv[1] == 'qlearning':
