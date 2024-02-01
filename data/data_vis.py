@@ -14,7 +14,6 @@ import scipy.stats as stats
 import scikit_posthocs as sp
 import numpy as np
 
-
 # Functions
 def clean_data(file: str) -> pd.DataFrame:
     """Clean the data. Removes NAN values and removes all columns after 24th column. 
@@ -103,7 +102,7 @@ def candlestick_format(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
     """
     if timeframe not in ['hourly', 'daily', 'weekly', 'monthly']:
         raise ValueError("Invalid timeframe. Choose from 'hourly', 'daily', 'weekly', 'monthly'.")
-
+ 
     # Reshape the DataFrame to have a row for each hour
     hours = []
     for _, row in df.iterrows():
@@ -164,7 +163,7 @@ def candlestick(ohlcs: list, descriptions: list) -> None:
 
     # Adjust layout and save the figure
     plt.tight_layout()
-    plt.rcParams.update({'font.size': 25})  # You can adjust the size as needed
+    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
     plt.savefig('../images/combined_candlestick_charts.png')
 
 def action_to_color(action)-> None:
@@ -241,9 +240,9 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
         color = 'green' if df['availability'].iloc[i] else 'black'
         ax1.plot([df['date'].iloc[i-1], df['date'].iloc[i]], [min(df['price']) - 1, min(df['price']) - 1], color=color, lw=5)
 
-    ax1.set_xlabel('Time (Hours)')
-    ax1.set_ylabel('Price (Euros/MWh)', color='black')
-    ax1.tick_params('y', colors='black')
+    ax1.set_xlabel('Time (Hours)', fontsize=15)
+    ax1.set_ylabel('Price (Euros/MWh)', color='black', fontsize=15)
+    ax1.tick_params('y', colors='black', labelsize=15)
 
     # Formatting the x-axis to display time in hours
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H'))
@@ -252,8 +251,8 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
     # Adding battery level with secondary axis
     ax2 = ax1.twinx()
     ax2.plot(df['date'], df['battery'], label='Battery Level', color='purple')
-    ax2.set_ylabel('Battery Level (kWh)', color='purple')
-    ax2.tick_params('y', colors='purple')
+    ax2.set_ylabel('Battery Level (kWh)', color='purple', fontsize=15)
+    ax2.tick_params('y', colors='purple', labelsize=15)
 
     # Create custom legend elements for actions
     legend_elements_actions = [
@@ -281,8 +280,8 @@ def visualize_bat(df: pd.DataFrame, algorithm: str) -> None:
 
     # Add title
     # Main title
-    plt.title(f'Price and Battery Level Over Time for {algorithm}', color='black')
-    plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=10, style='italic')
+    plt.title(f'Price and Battery Level Over Time for {algorithm}', color='black', fontsize=20)
+    plt.suptitle(f'Timespan: [{df["date"].iloc[0].strftime("%Y-%m-%d")} - {df["date"].iloc[-1].strftime("%Y-%m-%d")}]', color='gray', fontsize=15, style='italic')
 
     plt.tight_layout()
     plt.savefig(f'images/price_battery_level_{algorithm}{i}_new.png')
@@ -334,7 +333,7 @@ def hourly_patterns(df: pd.DataFrame)-> None:
     colors = ['skyblue', 'limegreen', 'salmon']  # Colors for different years
     years = [2007, 2008, 2009]
 
-    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
+    plt.rcParams.update({'font.size': 25})  # You can adjust the size as needed
 
     # Create boxplots for each hour and year
     for hour in range(1, 25):
@@ -350,7 +349,7 @@ def hourly_patterns(df: pd.DataFrame)-> None:
     plt.title('Hourly Electricity Price Distribution by Year (2007-2009)')
     plt.xlabel('Hour of the Day')
     plt.ylabel('Price (Euros/MWh)')
-    plt.xticks(range(1, 25), [f'H{hour}' for hour in range(1, 25)])
+    plt.xticks(range(1, 25), [f'{hour}' for hour in range(1, 25)])
     plt.grid(True)
 
     # Custom legend
@@ -381,7 +380,7 @@ def daily_patterns(df: pd.DataFrame) -> None:
     colors = ['skyblue', 'limegreen', 'salmon']  # Colors for different years
     years = [2007, 2008, 2009]
 
-    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
+    plt.rcParams.update({'font.size': 25})  # You can adjust the size as needed
 
     # Set up the figure
     plt.figure(figsize=(20, 10))
@@ -440,10 +439,10 @@ def monthly_patterns(df: pd.DataFrame) -> None:
     colors = ['skyblue', 'limegreen', 'salmon']  # Colors for different years
     years = [2007, 2008, 2009]
 
-    plt.rcParams.update({'font.size': 17})  # You can adjust the size as needed
+    plt.rcParams.update({'font.size': 25})  # You can adjust the size as needed
 
     # Set up the figure
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(20, 15))
 
     # Define offsets for each year to avoid overlapping
     offsets = [-0.2, 0, 0.2]
@@ -470,7 +469,7 @@ def monthly_patterns(df: pd.DataFrame) -> None:
     plt.title('Monthly Electricity Price Distribution by Year (2007-2009)')
     plt.xlabel('Month')
     plt.ylabel('Price (Euro/MWh)')
-    plt.xticks(range(1, 13), months_order)
+    plt.xticks(range(1, 13), months_order, rotation=45)
     plt.grid(True)
 
     # Custom legend
@@ -565,32 +564,37 @@ def table_summary(df: pd.DataFrame) -> None:
 
 if __name__ == "__main__":
     # Load train and val dataset
-    df_train = clean_data('../data/train.xlsx')
-    df_val = clean_data('../data/validate.xlsx')
+    df_train = clean_data('train.xlsx')
+    df_val = clean_data('validate.xlsx')
 
-    # Concatinate them
-    df = pd.concat([df_train, df_val])
-    # List of years
-    years = df['date'].dt.year.unique()
 
-    # Create a new DataFrame to store mean values for each year
-    mean_table = pd.DataFrame()
+    
+    dfs = candlestick_format(df_train, 'weekly')
+    candlestick(dfs, ['2007', '2008', '2009'])
 
-    # Loop over years
-    for year in years:
-        # Filter df for year
-        df_year = df[df['date'].dt.year == year]
+    # # Concatinate them
+    # df = pd.concat([df_train, df_val])
+    # # List of years
+    # years = df['date'].dt.year.unique()
 
-        # Remove date row
-        df_year = df_year.drop('date', axis=1)
+    # # Create a new DataFrame to store mean values for each year
+    # mean_table = pd.DataFrame()
 
-        # Calculate mean for each column
-        yearly_means = df_year.mean()
+    # # Loop over years
+    # for year in years:
+    #     # Filter df for year
+    #     df_year = df[df['date'].dt.year == year]
 
-        # Add mean values as a column to mean_table
-        mean_table[year] = yearly_means.round(2)
+    #     # Remove date row
+    #     df_year = df_year.drop('date', axis=1)
 
-    # Save mean_table to CSV
-    mean_table.to_csv('../data/yearly_hourly_means.csv')
+    #     # Calculate mean for each column
+    #     yearly_means = df_year.mean()
+
+    #     # Add mean values as a column to mean_table
+    #     mean_table[year] = yearly_means.round(2)
+
+    # # Save mean_table to CSV
+    # mean_table.to_csv('../data/yearly_hourly_means.csv')
 
 

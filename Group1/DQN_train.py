@@ -1,6 +1,6 @@
 import numpy as np
-from ElectricCarEnv import Electric_Car
-from algorithms import DQNAgentLSTM
+from TestEnv import Electric_Car
+from agent import DQNAgentLSTM
 import torch
 import optuna
 import os, csv

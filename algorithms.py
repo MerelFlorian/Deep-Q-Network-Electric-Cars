@@ -140,61 +140,62 @@ class QLearningAgent:
         # If action is buying)
         if action > 0:
             # Compute the maximum amount of energy that can be bought
-            max_buy = min(action, min(25,  (50 - battery_level) * 0.9)) / 25
+            max_buy = min(action, min(1,  (2 - battery_level) * 0.9))
             # If the agent buys between 3 am and 6 am 
             if 3 <= current_time <= 6:
-                shaped_reward += 25
+                shaped_reward += 3
             # If the agent buys at a price less than 30
             if current_price <= 30:
-                shaped_reward += 50
+                shaped_reward += 6
             # If the agent buys at a price greater than 70
             if current_price >= 70:
-                shaped_reward -= 50
-            if battery_level == 50:
-                shaped_reward -= 80
+                shaped_reward -= 5
+            if battery_level == 2:
+                shaped_reward -= 10
             # If the agent buys before 3 am or after 6 am
             if current_time < 3 or current_time > 6:
-                shaped_reward -= 30
+                shaped_reward -= 5
             # If the agent buys again but the price is 5% higher than the previous price
             if buy_price and current_price > buy_price * 1.05:
-                shaped_reward -= 10
+                shaped_reward -= 1
             # If the agent buys more than the maximum amount of energy that can be bought
             if action > max_buy / 4.1:
-                shaped_reward -= 10
+                shaped_reward -= 1
             # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
             if action <= max_buy / 8.2:
-                shaped_reward += 30
+                shaped_reward += 3
             # Save the buy price
             self.buys = np.append(self.buys, current_price)
         # If action is selling
         elif action < 0:
             # Compute the maximum amount of energy that can be sold
-            max_sell = max(action, -min(25, battery_level * 0.9)) / 25
+            max_sell = max(action, -min(1, battery_level * 0.9))
             # If the agent sells at a price equal to or greater than the buy price
             if buy_price and current_price >= 2 * buy_price / 0.9:
-                shaped_reward += 160
+                shaped_reward += 16
+            # If the agent sells at a price greater than 66
             if current_price >= 66 and buy_price:
-                shaped_reward += 100
+                shaped_reward += 10
             # If the agent sells at a price less than twice the buy price
             if buy_price and current_price < 2 * buy_price / 0.9:
-                shaped_reward -= 30
+                shaped_reward -= 16
             if not buy_price:
-                shaped_reward -= 50
+                shaped_reward -= 5
             # If the agent sells more than the maximum amount of energy that can be sold
             if action < max_sell:
-                shaped_reward -= 10 
+                shaped_reward -= 1
             # Save the sell price
             self.buys = np.array([])
         else:
             # If the agent is unavailable between 9 am and 7 pm
             if 9 <= current_time <= 19 and not available:
-                shaped_reward += 10
+                shaped_reward += 5
             # If the price is not a peak or a trough
             if (last_price < current_price < next_price) or (last_price > current_price > next_price):
-                shaped_reward += 1
+                shaped_reward += 0.1
             # If the price is a peak or a trough
             if (last_price > current_price < next_price) or (last_price < current_price > next_price):
-                shaped_reward -= 2
+                shaped_reward -= 0.2
         return shaped_reward
         
 class EMA:
@@ -333,153 +334,12 @@ class BuyLowSellHigh:
               self.action = -state[0]
           
       return self.action
-  
-class QNetwork(nn.Module):
-    """
-    This class represents the linear neural network used in the DQN algorithm.
-    """
-    def __init__(self, state_size, action_size, activation_fn=torch.relu):
-        super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(state_size, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, 32)
-        self.fc5 = nn.Linear(32, action_size)
-        self.activation_fn = activation_fn
-
-        # Apply He initialization
-        init.kaiming_normal_(self.fc1.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
-        init.kaiming_normal_(self.fc2.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
-        init.kaiming_normal_(self.fc3.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
-        init.kaiming_normal_(self.fc4.weight, mode='fan_in', nonlinearity=activation_fn.__name__)
-        init.kaiming_normal_(self.fc5.weight, mode='fan_in', nonlinearity='linear')
-
-    def forward(self, state):
-        """
-        This function computes the forward pass of the neural network.
-        """
-        x = self.activation_fn(self.fc1(state))
-        x = self.activation_fn(self.fc2(x))
-        x = self.activation_fn(self.fc3(x))
-        x = self.activation_fn(self.fc4(x))
-        return self.fc5(x)
-
-class DQNAgent_Linear:
-    """
-    This class represents the DQN agent.
-    """
-    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, activation_fn=torch.relu):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.memory = deque(maxlen=1000)
-        self.gamma = gamma  # discount factor
-        self.learning_rate = learning_rate
-        self.model = QNetwork(state_size, action_size, activation_fn)
-        self.target_model = QNetwork(state_size, action_size, activation_fn)
-        
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
-        self.replay_size = 24
-    
-        self.train_step_counter = 0  # Counter to track training steps
-        self.update_target_counter = 0  # Counter to track steps for updating target network
-
-
-    def remember(self, state, action, action_index, reward, next_state, done):
-        """
-        Function to store a transition in memory.
-        """
-        self.memory.append((state, action, action_index, reward, next_state, done))
-
-    def choose_action(self, state):
-        """Returns actions for given sequence of states as per current policy."""
-        
-        # Discretize the action space into action_size steps
-        action_values = np.linspace(-1, 1, self.action_size)
-
-        # Convert state to Tensor if it's not already one
-        if not isinstance(state, torch.Tensor):
-            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
-
-        if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
-            with torch.no_grad():
-                # Model forward pass with state
-                q_values = self.model(state)
-                
-                # Get the index of the action with the highest Q-value
-                action_index = torch.argmax(q_values, dim=1).item()  # Assuming q_values shape is [1, action_size]
-
-                # Return the action corresponding to the highest Q-value
-                return action_index, action_values[action_index]
-
-        else:  # Exploration
-            action_index = random.randrange(self.action_size)
-            return action_index, action_values[action_index]
-            
-    def replay(self):
-        """
-        Function to train the neural network on a single sample from memory.
-        """
-        self.train_step_counter += 1
-
-        if len(self.memory) < self.replay_size or self.train_step_counter % 4 != 0:
-            return  # Train only every 4th step and if enough samples
-
-        # Sample a single experience from memory
-        state, action, action_index, reward, next_state, done = random.choice(self.memory)
-        
-        # Convert the state and next_state to tensors
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-        next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
-
-        # Compute Q-values for current and next state
-        q_values = self.model(state_tensor)
-        next_q_values = self.model(next_state_tensor)
-
-        # Choose the best Q-value for next state
-        max_next_q_value = next_q_values.max(dim=1)[0].detach()
-
-        # Calculate target Q value
-        Q_target = reward + (self.gamma * max_next_q_value * (1 - done))
-
-        # Compute loss
-        criterion = nn.HuberLoss()
-        Q_expected = q_values[0, action_index]  # Select the Q-value for the taken action
-        loss = criterion(Q_expected.unsqueeze(0), torch.tensor([Q_target], dtype=torch.float32))
-
-        # Backpropagation
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        # Update target network, if needed
-        self.update_target_counter += 1
-        if self.update_target_counter % 100000 == 0:
-            self.target_model.load_state_dict(self.model.state_dict())
-
-        # Update epsilon
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-
-    def load(self, name):
-        """
-        Function to load the model's weights.
-        """
-        self.model.load_state_dict(torch.load(name))
-
-    def save(self, name):
-        """
-        Function to save the model's weights.
-        """
-        torch.save(self.model.state_dict(), name)
 
 class DQNAgentLSTM:
     """
     This class represents the DQN agent.
     """
-    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0.95, batch_size=24, activation_fn=torch.relu):
+    def __init__(self, state_size, action_size, learning_rate=0.0001, gamma=0, batch_size=24):
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         self.device = device
         self.state_size = state_size
@@ -487,17 +347,19 @@ class DQNAgentLSTM:
         self.memory = deque(maxlen=1000)
         self.gamma = gamma  # discount factor
         self.learning_rate = learning_rate
-        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
-        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=2).to(device)
+        self.model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
+        self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.epsilon = 1.0  # exploration rate
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0
+        self.epsilon_decay = 0.95
         self.batch_size = batch_size
 
         self.train_step_counter = 0  # Counter to track training steps
         self.update_target_counter = 0  # Counter to track steps for updating target network
+
+        self.buys = torch.from_numpy(np.array([], dtype=np.float32)).to(device)
 
 
     def remember(self, state, action, action_index, reward, next_state, done):
@@ -508,9 +370,11 @@ class DQNAgentLSTM:
 
     def choose_action(self, state_sequence, hidden_state=None):
         """Returns actions for given sequence of states as per current policy."""
-        
-        # Discretize the action space into 100 steps
-        action_values = np.linspace(-1, 1, self.action_size)
+        mid = 4
+        #  Discretize action bins
+        action_values = np.concatenate((
+            np.linspace(-1, 0, mid, endpoint=False), np.linspace(0, .5, 6), np.array([.75, 1])
+        ))  # Discretize actions (buy/sell amounts)
 
         if np.random.rand() > self.epsilon:  # Epsilon-greedy approach for exploitation
             with torch.no_grad():
@@ -573,6 +437,90 @@ class DQNAgentLSTM:
         # Update epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+    
+    def reward_shaping(self, state, next_state, action, last_price):
+        """Shape the reward such that buying low and selling high is encouraged. 
+
+        Args:
+            state (list): The current state of the environment.
+            next_state (list): The next state of the environment.
+            action (float): The action taken at the current time step.
+
+        Returns:
+            float: The shaped reward.
+        """
+        # Initialize the shaped reward
+        shaped_reward = 0
+
+        # Get prices, time and features from states 
+        current_price = state[1]
+        current_time = state[2]
+        next_price = next_state[1]
+        available = state[7]
+        battery_level = state[0]
+
+        buy_price = 0 if len(self.buys) == 0 else self.buys.mean()
+
+        # If action is buying)
+        if action > 0:
+            # Compute the maximum amount of energy that can be bought
+            max_buy = min(action, min(1,  (2 - battery_level) * 0.9))
+            # If the agent buys between 3 am and 6 am 
+            if 3 <= current_time <= 6:
+                shaped_reward += 3
+            # If the agent buys at a price less than 30
+            if current_price <= 30:
+                shaped_reward += 6
+            # If the agent buys at a price greater than 70
+            if current_price >= 70:
+                shaped_reward -= 5
+            if battery_level == 2:
+                shaped_reward -= 10
+            # If the agent buys before 3 am or after 6 am
+            if current_time < 3 or current_time > 6:
+                shaped_reward -= 5
+            # If the agent buys again but the price is 5% higher than the previous price
+            if buy_price and current_price > buy_price * 1.05:
+                shaped_reward -= 1
+            # If the agent buys more than the maximum amount of energy that can be bought
+            if action > max_buy / 4.1:
+                shaped_reward -= 1
+            # If the agent buys between 1/8 and 1/2 of the maximum amount of energy that can be bought
+            if action <= max_buy / 8.2:
+                shaped_reward += 3
+            # Append the buy price (tensor)
+            self.buys = torch.cat((self.buys, torch.tensor([current_price]).to(self.device)))
+        # If action is selling
+        elif action < 0:
+            # Compute the maximum amount of energy that can be sold
+            max_sell = max(action, -min(1, battery_level * 0.9))
+            # If the agent sells at a price equal to or greater than the buy price
+            if buy_price and current_price >= 2 * buy_price / 0.9:
+                shaped_reward += 16
+            # If the agent sells at a price greater than 66
+            if current_price >= 66 and buy_price:
+                shaped_reward += 10
+            # If the agent sells at a price less than twice the buy price
+            if buy_price and current_price < 2 * buy_price / 0.9:
+                shaped_reward -= 16
+            if not buy_price:
+                shaped_reward -= 5
+            # If the agent sells more than the maximum amount of energy that can be sold
+            if action < max_sell:
+                shaped_reward -= 1
+            # Clear the buy history (tensor)
+            self.buys.new_empty(0)
+        else:
+            # If the agent is unavailable between 9 am and 7 pm
+            if 9 <= current_time <= 19 and not available:
+                shaped_reward += 5
+            # If the price is not a peak or a trough
+            if (last_price < current_price < next_price) or (last_price > current_price > next_price):
+                shaped_reward += 0.1
+            # If the price is a peak or a trough
+            if (last_price > current_price < next_price) or (last_price < current_price > next_price):
+                shaped_reward -= 0.2
+        return shaped_reward
 
     def load(self, name):
         """
@@ -580,11 +528,11 @@ class DQNAgentLSTM:
         """
         self.model.load_state_dict(torch.load(name))
 
-    def save(self, name):
+    def save(self, best_model, name):
         """
         Function to save the model's weights.
         """
-        torch.save(self.model.state_dict(), name)
+        torch.save(best_model.state_dict(), name)
 
 class LSTM_DQN(nn.Module):
     """
@@ -621,6 +569,7 @@ class LSTM_DQN(nn.Module):
         
         return action_values, hidden_state
 
+
     def init_hidden(self, batch_size):
         """
         This function initializes the hidden state.
@@ -630,14 +579,15 @@ class LSTM_DQN(nn.Module):
         hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device),
                   weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device))
         return hidden
+    
+    
 
 class LSTM_PolicyNetwork(nn.Module):
     def __init__(self, state_size, action_size, hidden_size=64, lstm_layers=1):
         super(LSTM_PolicyNetwork, self).__init__()
         self.lstm = nn.LSTM(state_size, hidden_size, num_layers=lstm_layers, batch_first=True)
         self.fc_mean = nn.Linear(hidden_size, action_size)
-        self.fc_log_std = nn.Linear(hidden_size, action_size)
-        
+        self.fc_log_std = nn.Linear(hidden_size, action_size)   
 
     def forward(self, state, hidden_state=None):
         # state shape: (batch, sequence, features)

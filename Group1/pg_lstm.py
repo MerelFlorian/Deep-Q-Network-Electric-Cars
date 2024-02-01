@@ -1,11 +1,11 @@
 import torch
 import torch.optim as optim
 from gym import Env
-from ElectricCarEnv import Electric_Car
+from TestEnv import Electric_Car
 import numpy as np
 import optuna
 import sys
-from algorithms import LSTM_PolicyNetwork
+from agent import LSTM_PolicyNetwork
 
 def reward_shaping(buys, state, next_state, action, last_price):
         """Shape the reward such that buying low and selling high is encouraged. 
