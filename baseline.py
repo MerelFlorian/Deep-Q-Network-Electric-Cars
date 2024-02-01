@@ -26,7 +26,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     if isinstance(agent, DQNAgentLSTM):
         sequence_length = 7
         device = torch.device("cpu")
-        state_dict = torch.load('models/DQN_version_4/best.pth', map_location=device)
+        state_dict = torch.load('best_models/DQN/best.pth', map_location=device)
         agent.model = LSTM_DQN(22, 10, hidden_size=64, lstm_layers=1).to(device)
         agent.model.load_state_dict(state_dict)
         hidden_state = agent.model.init_hidden(1)
@@ -34,7 +34,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     if isinstance(agent, LSTM_PolicyNetwork):
         sequence_length = 7
         device = torch.device("cpu")
-        state_dict = torch.load('models/pg_1.pth', map_location=device)
+        state_dict = torch.load('best_models/PG/pg_1.pth', map_location=device)
         policy_network = LSTM_PolicyNetwork(10, 1, 48, 1)
         policy_network.load_state_dict(state_dict)
         hidden_state = policy_network.init_hidden(device, 1)
@@ -133,7 +133,7 @@ def qlearning() -> QLearningAgent:
     # Create a new agent instance
     test_agent = QLearningAgent(state_bins, action_bins, qtable_size, epsilon=0) 
     # Load the Q-table
-    test_agent.q_table = np.load('models/Qlearning/best.npy')
+    test_agent.q_table = np.load('best_models/qlearning/best.npy')
 
     # Return the agent
     return test_agent
@@ -212,14 +212,12 @@ if test_agent == "all":
     print(f"Average reward on validation set for ema: {ema_performance}")
 
     # Validate DQN Agent
-    dqn_agent = DQNAgentLSTM(34, 200)
-    dqn_agent.model = np.load('models/DQN_version_2/lr:0.003083619832717714_gamma:0.29946064465337385_batchsize:168_actsize:200.pth')
+    dqn_agent = DQNAgentLSTM(22, 10)
     dqn_performance, dqn_log_env = validate_agent(env, dqn_agent)
     print(f"Average reward on validation set for dqn: {dqn_performance}")
 
     # Validate PG Agent
     pg_agent = LSTM_PolicyNetwork(10, 1, 48, 1)
-    pg_agent.model = np.load('models/pg_1.pth')
     pg_performance, pg_log_env = validate_agent(env, pg_agent)
     print(f"Average reward on validation set for pg: {pg_performance}")
 
