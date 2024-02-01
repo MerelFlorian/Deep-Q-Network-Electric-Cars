@@ -351,7 +351,7 @@ class DQNAgentLSTM:
         self.target_model = LSTM_DQN(state_size, action_size, hidden_size=64, lstm_layers=1).to(device)
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0  # exploration rate
         self.epsilon_min = 0
         self.epsilon_decay = 0.95
         self.batch_size = batch_size
@@ -574,10 +574,9 @@ class LSTM_DQN(nn.Module):
         """
         This function initializes the hidden state.
         """
-        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         weight = next(self.parameters()).data
-        hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device),
-                  weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size).to(device))
+        hidden = (weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size),
+                  weight.new_zeros(self.lstm_layers, batch_size, self.hidden_size))
         return hidden
     
     
