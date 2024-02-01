@@ -11,7 +11,7 @@ from data.data_vis import plot_revenue
 import torch
 
 # Constants
-NUM_EPISODES = 5 # Define the number of episodes for training
+NUM_EPISODES = 100 # Define the number of episodes for training
 
 def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA or DQNAgentLSTM]) -> None:
     """ Function to validate the agent on a validation set.
