@@ -22,8 +22,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
     """
     # Initialize the total reward
     total_rewards = np.array([])
-    states = []
-
+    
     if isinstance(agent, DQNAgentLSTM):
         sequence_length = 7
         device = torch.device("cpu")
@@ -41,6 +40,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
 
     # Loop through the episodes
     for episode in range(NUM_EPISODES):
+        states = []
         total_reward = 0
         # Reset the environment
         state = env.reset()
@@ -61,7 +61,7 @@ def validate_agent(env: Env, agent: Type[QLearningAgent or BuyLowSellHigh or EMA
                     action = 0
                 else:
                     state_sequence = torch.stack(states[-sequence_length:]).unsqueeze(0)  # Shape: (1, sequence_length, state_size)
-                    _, action, hidden_state = test_agent.choose_action(state_sequence, hidden_state)
+                    _, action, hidden_state = agent.choose_action(state_sequence, hidden_state)
                 
             elif isinstance(agent, QLearningAgent):
                 action = agent.choose_action(state)
